@@ -1,0 +1,66 @@
+[project]
+name = "palettize"
+dynamic = ["version"]
+description = "A Python CLI tool for creating and exporting colormaps for data visualization and mapping applications."
+authors = [
+    { name = "Alex Kovac", email = "5686693+kovaca@users.noreply.github.com" }
+]
+license = "MIT"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+    "coloraide>=0.24",  
+    "typer>=0.9", 
+    "rich>=13.0",      
+    "webcolors>=1.13", 
+    "cmap>=0.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+palettize = "palettize.cli:app"
+
+
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+backend-path = "."
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+palettize = ["py.typed"]
+
+[tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+python_files = "test_*.py tests_*.py *_test.py *_tests.py"
+python_classes = "*Test* *Tests Test*"
+python_functions = "test_* *test"
+addopts = "--cov=src/palettize --cov-report=term-missing --cov-report=xml"
