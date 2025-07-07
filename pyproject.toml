@@ -54,6 +54,7 @@ where = ["src"]
 palettize = ["py.typed"]
 
 [tool.setuptools_scm]
+local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -63,3 +64,12 @@ python_files = "test_*.py tests_*.py *_test.py *_tests.py"
 python_classes = "*Test* *Tests Test*"
 python_functions = "test_* *test"
 addopts = "--cov=src/palettize --cov-report=term-missing --cov-report=xml"
+
+# [[tool.uv.index]]
+# name        = "testpypi"                     
+# url         = "https://test.pypi.org/simple/"
+# publish-url = "https://test.pypi.org/legacy/"
+# explicit    = true   
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]

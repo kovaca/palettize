@@ -1,7 +1,7 @@
-name: Release to PyPI
+name: Test release on TestPyPI
 on:
   push:
-    tags: ['v*']
+    tags: ['test*']
 permissions:
   contents: read
   id-token: write
