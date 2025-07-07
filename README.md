@@ -1,33 +1,28 @@
 # Palettize
 
-🎨 A Python utility and CLI tool for generating, previewing, and exporting color maps.
+🎨 A Python utility and CLI tool for generating, previewing, and exporting colormaps. 
 
-Palettize helps you create and manage colormaps for data visualization, GIS, and web mapping. It provides a simple, powerful command-line interface to:
+Palettize helps create colormaps for data visualization, GIS, and web mapping. It provides a simple command-line interface to:
 
 -   Generate colormaps from a list of colors or from built-in presets.
--   Instantly preview colormaps directly in your terminal.
+-   Preview colormaps directly in the terminal.
 -   Export colormaps to various formats suitable for different applications.
 -   Customize interpolation color space, data scaling, and slicing.
 
 ## Installation
 
-This project uses `uv` for dependency management. To install from source:
-
 ```bash
-git clone https://github.com/your-username/palettize.git # Replace with actual repo URL
+uv pip install palettize
+```
+
+Or install from source:
+```bash
+git clone https://github.com/kovaca/palettize.git
 cd palettize
 uv pip install .
 ```
 
-For development, install with the `dev` dependencies:
-
-```bash
-uv pip install -e .[dev]
-```
-
 ## Usage
-
-Palettize is built on a simple `verb-noun` philosophy. You use a command like `show` or `create` and tell it what to operate on—either a `preset` name or a list of custom `--colors`.
 
 ```bash
 palettize --help
@@ -51,10 +46,10 @@ palettize --help
     palettize show --colors "midnightblue,orange,gold"
     ```
 
-3.  **Export the 'spectral' preset to a GDAL color ramp file:**
+3.  **Export the 'viridis' preset to a GDAL color ramp file:**
     The `--domain` flag maps the colormap to your data's range.
     ```bash
-    palettize create spectral --format gdal --output spectral_gdal.txt --domain 0,255
+    palettize create viridis --format gdal --output viridis_gdal.txt --domain 0,255
     ```
 
 4.  **Create a custom colormap and export it to multiple formats:**
@@ -74,7 +69,7 @@ palettize --help
     Use the `-O` or `--option` flag to pass key-value pairs to an exporter.
     ```bash
     # Tell the 'observable' exporter to create a diverging scale with a pivot
-    palettize create RdBu -f observable -o plot.json \
+    palettize create RdBu -f observable --domain -5,10 -o plot.json \
       -O type=diverging -O pivot=0
     ```
 
