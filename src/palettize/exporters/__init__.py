@@ -13,6 +13,7 @@ from .sld import SldExporter
 from .titiler import TitilerExporter
 from .mapgl import MapglExporter
 from .observable_plot import ObservablePlotExporter
+from .gee import GEEExporter
 
 # Global registry for exporters
 # Maps an identifier string to an instantiated exporter object or a callable that returns one.
@@ -84,6 +85,7 @@ _BUILTIN_EXPORTERS = [
     TitilerExporter(),
     MapglExporter(),
     ObservablePlotExporter(),
+    GEEExporter(),
 ]
 
 for exporter_instance in _BUILTIN_EXPORTERS:
