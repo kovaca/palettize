@@ -51,7 +51,7 @@ class HexExporter(BaseExporter):
             color_hex = colormap.get_color(position, output_format="hex")
             colors.append(color_hex)
 
-        palette_str = "\n".join(colors) + "\n"
+        palette_str = "\n".join(colors)
         return palette_str
 
 
@@ -100,6 +100,6 @@ class RGBAExporter(BaseExporter):
             color_string = f"rgba({r}, {g}, {b}, {a})"
             colors.append(color_string)
 
-        palette_str = "\n".join(colors) + "\n"
+        palette_str = "\n".join(colors)
         return palette_str
 
