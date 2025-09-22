@@ -49,7 +49,6 @@ class ExitCodes:
 class AppState:
     def __init__(self):
         self.verbose_level = 0
-        self.quiet = False
 
 
 app_state = AppState()
@@ -76,9 +75,7 @@ def verbosity_callback(ctx: typer.Context, param: typer.CallbackParam, value: in
     return value
 
 
-def quiet_callback(ctx: typer.Context, param: typer.CallbackParam, value: bool):
-    app_state.quiet = value
-    return value
+ 
 
 
 @app.callback()
@@ -99,15 +96,6 @@ def global_options(
         count=True,
         callback=verbosity_callback,
         help="Increase output verbosity. Use -vv for more detail.",
-        show_default=False,
-    ),
-    quiet: Optional[bool] = typer.Option(
-        False,
-        "--quiet",
-        "-q",
-        callback=quiet_callback,
-        is_flag=True,
-        help="Suppress all informational output; only errors will be shown.",
         show_default=False,
     ),
 ):
@@ -203,7 +191,7 @@ def _create_colormap_from_options(
             f"[bold red]An unexpected error occurred during colormap creation:[/bold red] {e}",
             style="bold red",
         )
-        if app_state.verbose_level > 0:
+        if app_state.verbose_level > 1:
             console.print(
                 Panel(
                     traceback.format_exc(),
@@ -249,7 +237,7 @@ def _render_colormap_to_terminal(
     actual_width = width if width is not None else console_width
     actual_width = max(10, actual_width)
 
-    if not app_state.quiet:
+    if app_state.verbose_level > 0:
         console.print(
             f"Rendering preview of '{colormap_obj.name or 'custom'}' ({actual_width}x{height} chars):"
         )
@@ -481,7 +469,7 @@ def create(
             overall_success = False
             continue
 
-        if not app_state.quiet:
+        if app_state.verbose_level > 0:
             console.print(f"Exporting to [cyan]{fmt}[/cyan] format...")
 
         # Combine global and format-specific options
@@ -509,7 +497,7 @@ def create(
                 output_path = Path(output_path_str)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_path.write_text(output_str)
-                if not app_state.quiet:
+                if app_state.verbose_level > 0:
                     console.print(f"[green]Successfully wrote to {output_path}[/green]")
             else:
                 # If no output path, print to stdout
@@ -519,7 +507,7 @@ def create(
             console.print(
                 f"[bold red]Failed to export to {fmt}:[/bold red] {e}", style="bold red"
             )
-            if app_state.verbose_level > 0:
+            if app_state.verbose_level > 1:
                 console.print(
                     Panel(
                         traceback.format_exc(),
@@ -532,5 +520,5 @@ def create(
     if not overall_success:
         raise typer.Exit(code=ExitCodes.EXPORT_ERROR)
 
-    if not app_state.quiet:
+    if app_state.verbose_level > 0:
         console.print("[bold green]Export process completed.[/bold green]")
