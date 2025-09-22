@@ -73,6 +73,33 @@ palettize --help
       -O type=diverging -O pivot=0
     ```
 
+## Programmatic usage
+
+You can also use Palettize from Python by importing the library.
+
+```python
+from palettize import (
+    create_colormap,
+    list_available_presets,
+    get_scaler_by_name,
+)
+
+# Inspect presets
+print(list_available_presets()[:5])
+
+# Create from preset
+cmap = create_colormap(preset="custom/grayscale", name="Grayscale", cut_start=0.1, cut_end=0.9)
+print(cmap.get_color(0.5))  # hex string
+print(cmap.get_color(0.5, output_format="rgb_tuple"))
+
+# Create from a list of colors
+cmap2 = create_colormap(colors=["#0000ff", "white", "#ff0000"], name="BlueWhiteRed")
+
+# Use a scaler to map data values onto the colormap
+scaler = get_scaler_by_name("symlog", domain_min=-10, domain_max=10, linthresh=1, base=10)
+print(cmap2.apply_scaler(3.2, scaler))
+```
+
 ## Features
 
 -   **Flexible Colormap Creation**: Generate colormaps from lists of colors (hex, RGB, named) or use built-in presets.

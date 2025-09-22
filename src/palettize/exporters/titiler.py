@@ -81,10 +81,10 @@ class TitilerExporter(BaseExporter):
 
         # The required structure is a dictionary with a "colormap" key,
         # where the value is the JSON-dumped string of our color map.
-        payload = {"colormap": json.dumps(color_map_dict)}
+        payload = {"colormap": json.dumps(color_map_dict, indent=None, separators=(",", ":"))}
 
         # Finally, URL-encode the entire payload.
-        return urllib.parse.urlencode(payload)
+        return urllib.parse.urlencode(payload, quote_via=urllib.parse.quote)
 
 
 # Example Usage:
