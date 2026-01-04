@@ -1,0 +1,184 @@
+---
+title: Observable Plot Export Format
+description: Export colormaps for Observable Plot
+---
+
+The Observable Plot exporter creates scale definitions for use with Observable Plot and D3 visualizations.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `observable` |
+| Extension | `.json` |
+| Use case | Observable notebooks, D3 visualizations |
+
+## Output Format
+
+The output is a JSON object defining a color scale:
+
+```json
+{
+  "type": "linear",
+  "domain": [0, 255],
+  "range": ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"],
+  "interpolate": "d3.interpolateRgb"
+}
+```
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format observable --output scale.json --domain 0,100
+
+# Diverging scale
+palettize create RdBu -f observable -o diverging.json --domain -10,10 \
+  -O type=diverging -O pivot=0
+
+# Custom number of colors
+palettize create viridis -f observable -o scale.json --domain 0,100 --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import json
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+exporter = get_exporter("observable")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=100,
+    options={
+        "num_colors": 10,
+        "scale_type": "linear"
+    }
+)
+
+scale_def = json.loads(output)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | | Number of colors in the range |
+| `scale_type` | `str` | | Scale type passed from CLI |
+| `type` | `str` | `"linear"` | Observable scale type: `"linear"`, `"pow"`, `"sqrt"`, `"log"`, `"symlog"`, `"diverging"` |
+| `pivot` | `float` | | Pivot point for diverging scales |
+| `symmetric` | `bool` | | Whether diverging scale is symmetric |
+
+## Scale Types
+
+### Linear (Default)
+
+Standard linear interpolation:
+
+```bash
+palettize create viridis -f observable -o scale.json --domain 0,100
+```
+
+### Diverging
+
+For data with a meaningful midpoint:
+
+```bash
+palettize create RdBu -f observable -o scale.json --domain -50,50 \
+  -O type=diverging -O pivot=0
+```
+
+### Logarithmic
+
+For data spanning orders of magnitude:
+
+```bash
+palettize create viridis -f observable -o scale.json --domain 1,1000 \
+  --scale log -O type=log
+```
+
+### Square Root
+
+For count data:
+
+```bash
+palettize create viridis -f observable -o scale.json --domain 0,100 \
+  --scale sqrt -O type=sqrt
+```
+
+## Using in Observable
+
+### Basic Usage
+
+```javascript
+// Import or paste the scale definition
+const scaleConfig = {
+  "type": "linear",
+  "domain": [0, 100],
+  "range": ["#440154", "#21918c", "#fde725"],
+  "interpolate": "d3.interpolateRgb"
+};
+
+// Use with Plot
+Plot.plot({
+  color: {
+    type: scaleConfig.type,
+    domain: scaleConfig.domain,
+    range: scaleConfig.range
+  },
+  marks: [
+    Plot.dot(data, {x: "x", y: "y", fill: "value"})
+  ]
+})
+```
+
+### With D3 Scale
+
+```javascript
+import * as d3 from "d3";
+
+const scaleConfig = {
+  "type": "linear",
+  "domain": [0, 100],
+  "range": ["#440154", "#21918c", "#fde725"]
+};
+
+const colorScale = d3.scaleLinear()
+  .domain(d3.quantize(d3.interpolateNumber(scaleConfig.domain[0], scaleConfig.domain[1]), scaleConfig.range.length))
+  .range(scaleConfig.range);
+
+// Use it
+const color = colorScale(50);  // Returns interpolated color
+```
+
+### Observable Plot Heatmap
+
+```javascript
+Plot.plot({
+  color: {
+    type: "linear",
+    domain: [0, 100],
+    range: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"]
+  },
+  marks: [
+    Plot.cell(data, {x: "x", y: "y", fill: "value"})
+  ]
+})
+```
+
+## Interpolation Methods
+
+The exporter maps Palettize interpolation spaces to D3 interpolators:
+
+| Palettize Space | D3 Interpolator |
+|-----------------|-----------------|
+| `srgb` | `d3.interpolateRgb` |
+| `lab` | `d3.interpolateLab` |
+| `hcl`, `oklch` | `d3.interpolateHcl` |
+
+This ensures color blending in Observable matches the interpolation space used in Palettize.

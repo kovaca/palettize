@@ -1,0 +1,230 @@
+---
+title: Using Presets
+description: Working with built-in colormap presets
+---
+
+Palettize includes hundreds of colormap presets via the [cmap](https://cmap-docs.readthedocs.io/) library, plus custom built-in presets.
+
+## Listing Presets
+
+See all available presets:
+
+```bash
+palettize list presets
+```
+
+Or in Python:
+
+```python
+from palettize import list_available_presets
+
+presets = list_available_presets()
+print(f"Found {len(presets)} presets")
+print(presets[:10])  # First 10
+```
+
+## Using Presets
+
+### CLI
+
+```bash
+# Preview a preset
+palettize show viridis
+
+# Export a preset
+palettize create viridis --format gdal --output viridis.txt --domain 0,255
+```
+
+### Python
+
+```python
+from palettize import create_colormap
+
+# From preset
+cmap = create_colormap(preset="viridis")
+
+# Get colors
+print(cmap.get_color(0))    # Start color
+print(cmap.get_color(0.5))  # Middle
+print(cmap.get_color(1))    # End color
+```
+
+## Preset Categories
+
+### Scientific/Perceptually Uniform
+
+These colormaps are designed for accurate data representation:
+
+| Preset | Type | Use Case |
+|--------|------|----------|
+| `viridis` | Sequential | General purpose, colorblind-safe |
+| `magma` | Sequential | Dark backgrounds |
+| `inferno` | Sequential | High contrast |
+| `plasma` | Sequential | Good for heatmaps |
+| `cividis` | Sequential | Colorblind-optimized |
+
+```bash
+palettize show viridis
+palettize show magma
+palettize show inferno
+```
+
+### Diverging
+
+For data with a meaningful center point:
+
+| Preset | Use Case |
+|--------|----------|
+| `RdBu` | Red-Blue, good for temperature |
+| `RdYlBu` | Red-Yellow-Blue |
+| `BrBG` | Brown-Green, good for terrain |
+| `PiYG` | Pink-Green |
+| `PRGn` | Purple-Green |
+
+```bash
+palettize show RdBu
+palettize show BrBG
+```
+
+### Sequential
+
+For data with a natural ordering:
+
+| Preset | Character |
+|--------|-----------|
+| `Blues` | Light to dark blue |
+| `Greens` | Light to dark green |
+| `Reds` | Light to dark red |
+| `YlOrRd` | Yellow-Orange-Red |
+| `YlGnBu` | Yellow-Green-Blue |
+
+```bash
+palettize show Blues
+palettize show YlOrRd
+```
+
+### Categorical/Qualitative
+
+For discrete categories (use carefully with continuous data):
+
+| Preset | Colors |
+|--------|--------|
+| `Set1` | Bold, distinct |
+| `Set2` | Muted, distinct |
+| `Paired` | Paired colors |
+| `tab10` | Tableau 10 |
+
+```bash
+palettize show Set1
+palettize show tab10
+```
+
+### Custom Built-in Presets
+
+Palettize includes some custom presets prefixed with `custom/`:
+
+```bash
+palettize show custom/grayscale
+palettize show custom/simple_rgb
+```
+
+## Modifying Presets
+
+### Cut (Sub-segment)
+
+Use only part of a preset:
+
+```bash
+# Skip the dark ends of viridis
+palettize show viridis --cut "0.1,0.9"
+
+# Use only the first half
+palettize show viridis --cut "0,0.5"
+```
+
+### Change Interpolation Space
+
+Override the interpolation:
+
+```bash
+# Use sRGB instead of default oklch
+palettize show viridis --space srgb
+```
+
+### Rename
+
+Give a custom name:
+
+```bash
+palettize create viridis --format gdal --output elev.txt \
+  --name "Elevation" --domain 0,4000
+```
+
+## Loading Preset Data
+
+Get raw preset data programmatically:
+
+```python
+from palettize import load_preset_data
+
+# Returns list of color stops
+data = load_preset_data("viridis")
+print(data[:3])  # First 3 stops
+```
+
+## Finding the Right Preset
+
+### By Use Case
+
+| Visualization | Recommended Presets |
+|--------------|---------------------|
+| Elevation/terrain | `terrain`, `BrBG`, `YlGnBu` |
+| Temperature | `RdBu`, `coolwarm`, `RdYlBu` |
+| Heatmaps | `viridis`, `magma`, `inferno` |
+| Ocean depth | `Blues`, `deep`, `ocean` |
+| Vegetation/NDVI | `Greens`, `YlGn`, `BuGn` |
+| Population density | `YlOrRd`, `Reds`, `OrRd` |
+| Categorical data | `Set1`, `tab10`, `Paired` |
+
+### By Characteristic
+
+| Need | Presets |
+|------|---------|
+| Colorblind-safe | `viridis`, `cividis`, `magma` |
+| Print-friendly | `viridis`, `gray`, `bone` |
+| Perceptually uniform | `viridis`, `magma`, `inferno`, `plasma` |
+| High contrast | `inferno`, `hot`, `jet` |
+| Dark background | `magma`, `inferno` |
+| Light background | `viridis`, `plasma` |
+
+## The cmap Library
+
+Most presets come from the [cmap library](https://cmap-docs.readthedocs.io/), which aggregates colormaps from:
+
+- Matplotlib
+- Bokeh
+- Plotly
+- Seaborn
+- Scientific journals
+- And more
+
+Browse the full catalog in their documentation to discover more options.
+
+## Creating Custom Presets
+
+If you frequently use the same colors, create them directly:
+
+```bash
+# Define custom colors
+palettize show --colors "navy,white,darkred" --name "MyDiverging"
+
+# Or in Python
+from palettize import create_colormap
+
+my_cmap = create_colormap(
+    colors=["#001f3f", "#ffffff", "#85144b"],
+    name="NavyWhiteMaroon"
+)
+```
+
+For reusable custom presets, consider creating a [custom exporter plugin](/palettize/guides/custom-exporters/) or simply save your preferred color lists.

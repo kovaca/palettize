@@ -1,0 +1,92 @@
+---
+title: palettize list
+description: List available presets and exporters
+---
+
+The `list` command group provides subcommands to explore available resources.
+
+## List Presets
+
+Show all available colormap presets:
+
+```bash
+palettize list presets
+```
+
+This displays a table of all preset names from the [cmap](https://cmap-docs.readthedocs.io/) library plus any custom presets.
+
+Example output:
+```
+       Available Preset Palettes
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Name                                 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ custom/grayscale                     │
+│ custom/simple_rgb                    │
+│ inferno                              │
+│ magma                                │
+│ plasma                               │
+│ viridis                              │
+│ ...                                  │
+└──────────────────────────────────────┘
+```
+
+### Using Presets
+
+Once you find a preset name, use it with `show` or `create`:
+
+```bash
+palettize show viridis
+palettize create viridis -f gdal -o viridis.txt
+```
+
+### Preset Categories
+
+Presets come from multiple sources:
+
+- **Built-in custom presets**: Prefixed with `custom/` (e.g., `custom/grayscale`)
+- **cmap library presets**: Standard scientific colormaps like `viridis`, `magma`, `inferno`, `plasma`, etc.
+
+## List Exporters
+
+Show all available export formats:
+
+```bash
+palettize list exporters
+```
+
+This displays a table with exporter identifiers and their names.
+
+Example output:
+```
+             Available Palettize Exporters
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Identifier                   ┃ Name                 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ gdal                         │ GDAL Color Relief    │
+│ gee                          │ Google Earth Engine  │
+│ hex                          │ Plaintext Hex        │
+│ mapgl                        │ MapLibre GL JS       │
+│ observable                   │ Observable Plot      │
+│ qgis                         │ QGIS Color Ramp XML  │
+│ rgba                         │ Plaintext RGBA       │
+│ sld                          │ OGC SLD XML          │
+│ titiler                      │ TiTiler Colormap URL │
+└──────────────────────────────┴──────────────────────┘
+```
+
+### Using Exporters
+
+Use the identifier (first column) with the `--format` option:
+
+```bash
+# Single format
+palettize create viridis -f gdal -o output.txt
+
+# Multiple formats
+palettize create viridis -f gdal,qgis,mapgl -o "{name}_{format}.{ext}"
+```
+
+### Plugin Exporters
+
+If you've installed additional exporter plugins, they will also appear in this list. See [Custom Exporters](/palettize/guides/custom-exporters/) for information on creating your own.

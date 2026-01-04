@@ -1,0 +1,126 @@
+---
+title: Export Formats Overview
+description: Supported colormap export formats
+---
+
+Palettize supports exporting colormaps to 9 different formats for GIS applications, web mapping, and data visualization.
+
+## Available Formats
+
+| Identifier | Name | Extension | Use Case |
+|------------|------|-----------|----------|
+| [`gdal`](/palettize/export-formats/gdal/) | GDAL Color Relief | `.txt` | GDAL `gdaldem color-relief` |
+| [`qgis`](/palettize/export-formats/qgis/) | QGIS Color Ramp XML | `.xml` | QGIS styles and projects |
+| [`sld`](/palettize/export-formats/sld/) | OGC SLD XML | `.sld` | GeoServer, WMS services |
+| [`titiler`](/palettize/export-formats/titiler/) | TiTiler Colormap URL | `.txt` | TiTiler tile server |
+| [`mapgl`](/palettize/export-formats/maplibre-gl/) | MapLibre GL JS | `.json` | MapLibre/Mapbox web maps |
+| [`observable`](/palettize/export-formats/observable-plot/) | Observable Plot | `.json` | Observable notebooks |
+| [`gee`](/palettize/export-formats/gee/) | Google Earth Engine | `.js` | GEE Code Editor |
+| [`hex`](/palettize/export-formats/hex/) | Plaintext Hex | `.txt` | General purpose |
+| [`rgba`](/palettize/export-formats/rgba/) | Plaintext RGBA | `.txt` | CSS/web development |
+
+## Quick Usage
+
+### CLI
+
+```bash
+# Single format
+palettize create viridis --format gdal --output viridis.txt --domain 0,255
+
+# Multiple formats
+palettize create viridis --format gdal,qgis,mapgl \
+  --output "{name}_{format}.{ext}" --domain 0,255
+```
+
+### Python
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("gdal")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 256}
+)
+```
+
+## Format Categories
+
+### GIS Formats
+
+- **GDAL**: For raster processing with GDAL command-line tools
+- **QGIS**: For QGIS desktop GIS styling
+- **SLD**: For OGC-compliant web services (GeoServer, WMS)
+
+### Web Mapping Formats
+
+- **TiTiler**: For dynamic tile server colorization
+- **MapLibre GL JS**: For browser-based vector/raster maps
+- **Observable Plot**: For Observable notebooks and D3 visualizations
+
+### Satellite/Remote Sensing
+
+- **Google Earth Engine**: For GEE Code Editor scripts
+
+### Generic Formats
+
+- **Hex**: Simple hex color lists for any application
+- **RGBA**: CSS-compatible RGBA values
+
+## Common Options
+
+Most exporters support these common options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | varies | Number of discrete color steps |
+| `precision` | `int` | varies | Decimal places for numbers |
+| `name` | `str` | | Colormap name in output metadata |
+
+### Passing Options via CLI
+
+Use the `-O` or `--option` flag:
+
+```bash
+# Global option (applies to all formats)
+palettize create viridis -f gdal -O num_colors=256
+
+# Format-specific option
+palettize create viridis -f gdal,qgis -O gdal:num_colors=256 -O qgis:ramp_type=exact
+```
+
+### Passing Options via Python
+
+Pass a dictionary to the `options` parameter:
+
+```python
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={
+        "num_colors": 256,
+        "name": "My Colormap"
+    }
+)
+```
+
+## Choosing a Format
+
+| If you need to... | Use |
+|-------------------|-----|
+| Apply colors to rasters with GDAL | `gdal` |
+| Style layers in QGIS | `qgis` |
+| Publish to GeoServer or WMS | `sld` |
+| Colorize COGs with TiTiler | `titiler` |
+| Style web maps with MapLibre | `mapgl` |
+| Create D3/Observable visualizations | `observable` |
+| Analyze satellite data in GEE | `gee` |
+| Just need a list of colors | `hex` or `rgba` |

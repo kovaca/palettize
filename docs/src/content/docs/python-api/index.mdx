@@ -1,0 +1,123 @@
+---
+title: Python API Overview
+description: Using Palettize as a Python library
+---
+
+Palettize can be used directly from Python scripts and notebooks in addition to the CLI.
+
+## Installation
+
+```bash
+pip install palettize
+```
+
+## Quick Start
+
+```python
+from palettize import create_colormap, get_scaler_by_name
+
+# Create a colormap from a preset
+cmap = create_colormap(preset="viridis", name="Viridis")
+
+# Get a color at a specific position (0-1)
+hex_color = cmap.get_color(0.5)  # "#21918c"
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 140)
+
+# Create from custom colors
+cmap2 = create_colormap(
+    colors=["#0000ff", "white", "#ff0000"],
+    name="BlueWhiteRed"
+)
+
+# Use a scaler to map data values
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+color = cmap2.apply_scaler(50, scaler)  # Color at midpoint
+```
+
+## Module Exports
+
+The `palettize` package exports the following:
+
+### Core Colormap API
+
+| Export | Description |
+|--------|-------------|
+| [`Colormap`](/palettize/python-api/colormap/) | Main colormap class |
+| [`ColorStop`](/palettize/python-api/colormap/#colorstop) | Individual color stop |
+| [`create_colormap()`](/palettize/python-api/colormap/#create_colormap) | Factory function to create colormaps |
+| `InputColor` | Type alias for accepted color formats |
+| `parse_input_color()` | Parse various color formats |
+
+### Scaling Functions
+
+| Export | Description |
+|--------|-------------|
+| [`get_scaler_by_name()`](/palettize/python-api/scaling/) | Factory to create scalers by name |
+| [`get_linear_scaler()`](/palettize/python-api/scaling/#get_linear_scaler) | Linear scaling |
+| [`get_power_scaler()`](/palettize/python-api/scaling/#get_power_scaler) | Power scaling |
+| [`get_sqrt_scaler()`](/palettize/python-api/scaling/#get_sqrt_scaler) | Square root scaling |
+| [`get_log_scaler()`](/palettize/python-api/scaling/#get_log_scaler) | Logarithmic scaling |
+| [`get_symlog_scaler()`](/palettize/python-api/scaling/#get_symlog_scaler) | Symmetric log scaling |
+| `ScalingFunction` | Type alias for scaling functions |
+
+### Presets
+
+| Export | Description |
+|--------|-------------|
+| `list_available_presets()` | List all available preset names |
+| `load_preset_data()` | Load raw preset data |
+
+### Exporters
+
+| Export | Description |
+|--------|-------------|
+| [`get_exporter()`](/palettize/python-api/exporters/) | Get an exporter by identifier |
+| [`list_available_exporters()`](/palettize/python-api/exporters/#list_available_exporters) | List all available exporters |
+| [`register_exporter()`](/palettize/python-api/exporters/#register_exporter) | Register a custom exporter |
+| `load_plugin_exporters()` | Load exporters from plugins |
+
+## Example: Full Workflow
+
+```python
+from palettize import (
+    create_colormap,
+    get_scaler_by_name,
+    get_exporter,
+    list_available_presets,
+)
+
+# See what presets are available
+presets = list_available_presets()
+print(presets[:5])  # First 5 presets
+
+# Create a colormap
+cmap = create_colormap(
+    preset="viridis",
+    interpolation_space="oklch",
+    cut_start=0.1,  # Skip first 10%
+    cut_end=0.9,    # Skip last 10%
+)
+
+# Create a scaler for your data range
+scaler = get_scaler_by_name(
+    "linear",
+    domain_min=0,
+    domain_max=255
+)
+
+# Get colors for specific values
+for value in [0, 64, 128, 192, 255]:
+    color = cmap.apply_scaler(value, scaler)
+    print(f"{value}: {color}")
+
+# Export to a format
+exporter = get_exporter("gdal")
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 256}
+)
+print(output)
+```

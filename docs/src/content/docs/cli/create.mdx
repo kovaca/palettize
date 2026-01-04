@@ -1,0 +1,203 @@
+---
+title: palettize create
+description: Export colormaps to various file formats
+---
+
+The `create` command exports colormaps to one or more file formats for use in GIS applications, web mapping, and data visualization.
+
+## Usage
+
+```bash
+palettize create [PRESET_NAME] --format FORMAT [OPTIONS]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name of a preset palette (e.g., `viridis`). Optional if `--colors` is provided. |
+
+## Required Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--format` | `-f` | One or more export format identifiers. Use multiple times or comma-separate. |
+
+## Colormap Options
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--colors` | `-c` | | List of input colors to create a colormap from. |
+| `--space` | `-s` | `oklch` | Color space for interpolation. |
+| `--cut` | | `0,1` | Sub-segment of the colormap to use (e.g., `0.2,0.8`). |
+| `--name` | | | Name for the colormap, used in file naming and output. |
+
+## Output Options
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--output` | `-o` | stdout | Output path pattern. Supports `{name}`, `{format}`, `{ext}` placeholders. |
+| `--steps` | `-n` | `7` | Number of discrete color steps for outputs. Minimum: 2. |
+| `--precision` | | | Decimal places for numeric values in output. |
+
+## Data Domain and Scaling
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--domain` | `-d` | `0,1` | Data domain for scaling (e.g., `0,100` or `-10,10`). |
+| `--scale` | | `linear` | Scaling type: `linear`, `power`, `sqrt`, `log`, `symlog`. |
+| `--scale-exponent` | | | Exponent for `power` scale. Required when `--scale=power`. |
+| `--scale-log-base` | | `10` | Log base for `log` or `symlog` scales. |
+| `--scale-symlog-linthresh` | | | Linear threshold for `symlog` scale. Required when `--scale=symlog`. |
+
+## Format-Specific Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--option` | `-O` | Pass format-specific options as `key=value` or `exporter:key=value`. Use multiple times. |
+
+## Examples
+
+### Basic Export
+
+```bash
+# Export viridis to GDAL format
+palettize create viridis --format gdal --output viridis.txt
+
+# Export with custom data domain
+palettize create viridis -f gdal -o viridis.txt --domain 0,255
+```
+
+### Export Custom Colors
+
+```bash
+# Create a blue-white-red diverging colormap
+palettize create --colors "blue,white,red" -f gdal -o bwr.txt --domain -100,100
+```
+
+### Multiple Formats
+
+Use the `{name}`, `{format}`, and `{ext}` placeholders in the output path:
+
+```bash
+palettize create viridis --format gdal,qgis,mapgl \
+  --output "output/{name}_{format}.{ext}" \
+  --domain 0,255 \
+  --steps 11
+```
+
+This creates:
+- `output/viridis_gdal.txt`
+- `output/viridis_qgis.xml`
+- `output/viridis_mapgl.json`
+
+### Control Number of Colors
+
+```bash
+# Generate 256 discrete colors
+palettize create viridis -f gdal -o viridis.txt --steps 256
+
+# Generate only 5 colors
+palettize create viridis -f hex -n 5
+```
+
+### Data Scaling
+
+#### Linear (Default)
+
+```bash
+palettize create viridis -f gdal -o output.txt --domain 0,100 --scale linear
+```
+
+#### Square Root
+
+```bash
+palettize create viridis -f gdal -o output.txt --domain 0,100 --scale sqrt
+```
+
+#### Power
+
+```bash
+# Quadratic scaling (exponent=2)
+palettize create viridis -f gdal -o output.txt --domain 0,100 --scale power --scale-exponent 2
+```
+
+#### Logarithmic
+
+```bash
+# Log base 10
+palettize create viridis -f gdal -o output.txt --domain 1,1000 --scale log
+
+# Log base 2
+palettize create viridis -f gdal -o output.txt --domain 1,1024 --scale log --scale-log-base 2
+```
+
+#### Symmetric Log (for data spanning zero)
+
+```bash
+palettize create --colors "blue,white,red" -f gdal -o output.txt \
+  --domain -100,100 --scale symlog --scale-symlog-linthresh 1
+```
+
+### Format-Specific Options
+
+Use `-O` or `--option` to pass options to specific exporters:
+
+```bash
+# Set Observable Plot scale type
+palettize create RdBu -f observable -o plot.json \
+  --domain -5,10 -O type=diverging -O pivot=0
+
+# Target a specific exporter
+palettize create viridis -f gdal,qgis \
+  -O gdal:nodata_value=0 -O qgis:ramp_type=exact
+```
+
+### Print to Standard Output
+
+Omit `--output` to print the result:
+
+```bash
+# Print hex colors
+palettize create viridis -f hex -n 5
+```
+
+Output:
+```
+#440154
+#3b528b
+#21918c
+#5ec962
+#fde725
+```
+
+### Verbose Output
+
+```bash
+palettize -v create viridis -f gdal -o viridis.txt --domain 0,255
+```
+
+Output:
+```
+Exporting to gdal format...
+Successfully wrote to viridis.txt
+Export process completed.
+```
+
+## Available Formats
+
+Run `palettize list exporters` to see all available formats:
+
+| Identifier | Description |
+|------------|-------------|
+| `gdal` | GDAL Color Relief Text |
+| `qgis` | QGIS Color Ramp XML |
+| `sld` | OGC SLD XML |
+| `titiler` | TiTiler Colormap URL Parameter |
+| `mapgl` | MapLibre GL JS Expression |
+| `observable` | Observable Plot Scale |
+| `gee` | Google Earth Engine Snippet |
+| `hex` | Plaintext Hexadecimal |
+| `rgba` | Plaintext RGBA |
+
+See [Export Formats](/palettize/export-formats/) for detailed documentation of each format.

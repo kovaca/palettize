@@ -1,0 +1,228 @@
+---
+title: Exporters
+description: Exporting colormaps to various formats
+---
+
+The exporter system allows you to convert colormaps to various output formats for use in GIS applications, web mapping, and data visualization tools.
+
+## Using Exporters
+
+### get_exporter()
+
+Retrieve an exporter by its identifier:
+
+```python
+from palettize import get_exporter, create_colormap, get_scaler_by_name
+
+# Get the GDAL exporter
+exporter = get_exporter("gdal")
+
+# Create colormap and scaler
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+
+# Export
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 256}
+)
+print(output)
+```
+
+### list_available_exporters()
+
+List all registered exporters:
+
+```python
+from palettize import list_available_exporters
+
+exporters = list_available_exporters()
+for identifier, name in exporters.items():
+    print(f"{identifier}: {name}")
+```
+
+Output:
+```
+gdal: GDAL Color Relief Text
+qgis: QGIS Color Ramp XML
+sld: OGC SLD XML
+titiler: TiTiler Colormap URL Parameter
+mapgl: MapLibre GL JS Expression
+observable: Observable Plot Scale
+gee: Google Earth Engine Snippet
+hex: Plaintext Hexadecimal
+rgba: Plaintext RGBA
+```
+
+## The export() Method
+
+All exporters implement the `export()` method with the following signature:
+
+```python
+def export(
+    self,
+    colormap: Colormap,
+    scaler: ScalingFunction,
+    domain_min: float,
+    domain_max: float,
+    options: Optional[Dict[str, Any]] = None,
+) -> str
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `colormap` | `Colormap` | The colormap to export |
+| `scaler` | `ScalingFunction` | Maps data values to colormap positions |
+| `domain_min` | `float` | Minimum value of data domain |
+| `domain_max` | `float` | Maximum value of data domain |
+| `options` | `dict \| None` | Format-specific options |
+
+### Common Options
+
+These options are recognized by most exporters:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `num_colors` | `int` | Number of discrete color steps to generate |
+| `precision` | `int` | Decimal places for numeric values |
+| `name` | `str` | Colormap name for output metadata |
+
+See the [Export Formats](/palettize/export-formats/) documentation for format-specific options.
+
+## Creating Custom Exporters
+
+You can create custom exporters by inheriting from `BaseExporter`.
+
+### BaseExporter Interface
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+from palettize.core import Colormap
+from palettize import ScalingFunction
+
+class BaseExporter(ABC):
+    @property
+    @abstractmethod
+    def identifier(self) -> str:
+        """Unique machine-readable identifier (e.g., 'my_format')"""
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Human-readable name (e.g., 'My Custom Format')"""
+        pass
+
+    @property
+    def default_file_extension(self) -> Optional[str]:
+        """Default file extension (e.g., 'json')"""
+        return None
+
+    @abstractmethod
+    def export(
+        self,
+        colormap: Colormap,
+        scaler: ScalingFunction,
+        domain_min: float,
+        domain_max: float,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Export the colormap to a string"""
+        pass
+```
+
+### Example Custom Exporter
+
+```python
+from palettize.exporters._base import BaseExporter
+from palettize.core import Colormap
+from palettize import ScalingFunction
+from typing import Any, Dict, Optional
+
+class CSSGradientExporter(BaseExporter):
+    @property
+    def identifier(self) -> str:
+        return "css"
+
+    @property
+    def name(self) -> str:
+        return "CSS Gradient"
+
+    @property
+    def default_file_extension(self) -> Optional[str]:
+        return "css"
+
+    def export(
+        self,
+        colormap: Colormap,
+        scaler: ScalingFunction,
+        domain_min: float,
+        domain_max: float,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        options = options or {}
+        num_colors = options.get("num_colors", 5)
+
+        stops = []
+        for i in range(num_colors):
+            position = i / (num_colors - 1)
+            color = colormap.get_color(position)
+            percent = int(position * 100)
+            stops.append(f"{color} {percent}%")
+
+        gradient = f"linear-gradient(to right, {', '.join(stops)})"
+        return f".colormap {{ background: {gradient}; }}"
+```
+
+### register_exporter()
+
+Register your custom exporter:
+
+```python
+from palettize import register_exporter
+
+exporter = CSSGradientExporter()
+register_exporter(exporter)
+
+# Now it's available via get_exporter
+css_exporter = get_exporter("css")
+```
+
+Parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `exporter_instance` | `BaseExporter` | | The exporter instance to register |
+| `overwrite` | `bool` | `False` | Allow overwriting existing exporters |
+
+## Plugin System
+
+Exporters can be distributed as plugins using Python entry points.
+
+### Creating a Plugin
+
+1. Create your exporter class inheriting from `BaseExporter`
+2. Register it in your package's `pyproject.toml`:
+
+```toml
+[project.entry-points."palettize.exporters"]
+my_format = "my_package.exporters:MyFormatExporter"
+```
+
+3. When users install your package, the exporter is automatically available
+
+### load_plugin_exporters()
+
+Plugins are loaded automatically when the `palettize.exporters` module is imported. To force reload:
+
+```python
+from palettize import load_plugin_exporters
+
+load_plugin_exporters(force_reload=True)
+```
+
+See the [Custom Exporters guide](/palettize/guides/custom-exporters/) for a complete walkthrough.

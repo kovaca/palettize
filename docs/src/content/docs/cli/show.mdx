@@ -1,0 +1,89 @@
+---
+title: palettize show
+description: Preview colormaps in the terminal
+---
+
+The `show` command renders a colormap preview directly in your terminal using colored block characters.
+
+## Usage
+
+```bash
+palettize show [PRESET_NAME] [OPTIONS]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `PRESET_NAME` | Name of a preset palette (e.g., `viridis`). Optional if `--colors` is provided. |
+
+## Options
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--colors` | `-c` | | List of input colors. Use multiple times or comma-separate. |
+| `--width` | `-w` | terminal width | Width for preview in characters. |
+| `--height` | `-H` | `1` | Height for preview in lines (minimum: 1). |
+| `--space` | `-s` | `oklch` | Color space for interpolation. |
+| `--cut` | | `0,1` | Sub-segment of the colormap to use (e.g., `0.2,0.8`). |
+| `--name` | | | Set a display name for the colormap. |
+
+## Examples
+
+### Show a Built-in Preset
+
+```bash
+palettize show viridis
+```
+
+### Show a Custom Gradient
+
+```bash
+palettize show --colors "midnightblue,orange,gold"
+```
+
+You can also specify colors separately:
+
+```bash
+palettize show -c red -c white -c blue
+```
+
+### Adjust Preview Size
+
+```bash
+# Wide preview
+palettize show viridis --width 120
+
+# Multi-line preview
+palettize show viridis --height 5
+
+# Both
+palettize show viridis -w 80 -H 3
+```
+
+### Use Different Color Spaces
+
+The `--space` option controls how colors are interpolated:
+
+```bash
+# Default: perceptually uniform Oklch
+palettize show --colors "blue,yellow" --space oklch
+
+# Standard RGB interpolation
+palettize show --colors "blue,yellow" --space srgb
+
+# CIELAB color space
+palettize show --colors "blue,yellow" --space lab
+```
+
+### Use a Sub-segment of a Colormap
+
+The `--cut` option lets you use only part of a colormap:
+
+```bash
+# Use only the middle 60% of viridis
+palettize show viridis --cut "0.2,0.8"
+
+# Use only the first half
+palettize show viridis --cut "0,0.5"
+```

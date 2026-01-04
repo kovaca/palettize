@@ -1,0 +1,217 @@
+---
+title: Scaling Functions
+description: Map data domains to colormap positions
+---
+
+Scaling functions map values from your data domain to the colormap range [0, 1]. Palettize provides several scaling types for different data distributions.
+
+## get_scaler_by_name()
+
+The easiest way to create a scaler:
+
+```python
+from palettize import get_scaler_by_name
+
+# Linear scaling
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+
+# Use it
+normalized = scaler(50)  # Returns 0.5
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | `str` | | Scaler type: `"linear"`, `"power"`, `"sqrt"`, `"log"`, `"symlog"` |
+| `domain_min` | `float` | | Minimum value of input domain |
+| `domain_max` | `float` | | Maximum value of input domain |
+| `clamp` | `bool` | `True` | Clamp output to [0, 1] |
+| `**kwargs` | | | Additional arguments for specific scalers |
+
+### Additional Arguments by Type
+
+| Scaler | Required | Optional |
+|--------|----------|----------|
+| `linear` | | |
+| `power` | `exponent` | |
+| `sqrt` | | |
+| `log` | | `base` (default: 10) |
+| `symlog` | `linthresh` | `base` (default: 10) |
+
+## Scaling Types
+
+### Linear
+
+Direct proportional mapping. Best for uniformly distributed data.
+
+```python
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+
+scaler(0)    # 0.0
+scaler(25)   # 0.25
+scaler(50)   # 0.5
+scaler(100)  # 1.0
+```
+
+### Power
+
+Raises the normalized value to a power. Useful for emphasizing low or high values.
+
+```python
+# Emphasize high values (gamma > 1)
+scaler = get_scaler_by_name("power", domain_min=0, domain_max=100, exponent=2)
+
+scaler(50)  # 0.25 (compressed lower range)
+
+# Emphasize low values (gamma < 1)
+scaler = get_scaler_by_name("power", domain_min=0, domain_max=100, exponent=0.5)
+
+scaler(50)  # ~0.707 (expanded lower range)
+```
+
+### Square Root
+
+Equivalent to power scaling with exponent 0.5. Good for count data or areas.
+
+```python
+scaler = get_scaler_by_name("sqrt", domain_min=0, domain_max=100)
+
+scaler(25)  # 0.5 (sqrt(25/100) = 0.5)
+scaler(50)  # ~0.707
+```
+
+### Logarithmic
+
+For data spanning multiple orders of magnitude. Domain must be positive.
+
+```python
+scaler = get_scaler_by_name("log", domain_min=1, domain_max=1000)
+
+scaler(1)     # 0.0
+scaler(10)    # ~0.33
+scaler(100)   # ~0.67
+scaler(1000)  # 1.0
+
+# With custom base
+scaler = get_scaler_by_name("log", domain_min=1, domain_max=1024, base=2)
+```
+
+### Symmetric Log (symlog)
+
+For data that spans zero with a wide dynamic range. Behaves linearly near zero and logarithmically away from zero.
+
+```python
+scaler = get_scaler_by_name(
+    "symlog",
+    domain_min=-100,
+    domain_max=100,
+    linthresh=1  # Linear within [-1, 1]
+)
+
+scaler(-100)  # 0.0
+scaler(-1)    # ~0.25
+scaler(0)     # 0.5
+scaler(1)     # ~0.75
+scaler(100)   # 1.0
+```
+
+The `linthresh` parameter defines the threshold around zero where the scale is linear.
+
+## Individual Scaler Functions
+
+You can also use the individual scaler factory functions:
+
+### get_linear_scaler()
+
+```python
+from palettize import get_linear_scaler
+
+scaler = get_linear_scaler(domain_min=0, domain_max=100, clamp=True)
+```
+
+### get_power_scaler()
+
+```python
+from palettize import get_power_scaler
+
+scaler = get_power_scaler(domain_min=0, domain_max=100, exponent=2, clamp=True)
+```
+
+### get_sqrt_scaler()
+
+```python
+from palettize import get_sqrt_scaler
+
+scaler = get_sqrt_scaler(domain_min=0, domain_max=100, clamp=True)
+```
+
+### get_log_scaler()
+
+```python
+from palettize import get_log_scaler
+
+scaler = get_log_scaler(domain_min=1, domain_max=1000, base=10, clamp=True)
+```
+
+### get_symlog_scaler()
+
+```python
+from palettize import get_symlog_scaler
+
+scaler = get_symlog_scaler(
+    domain_min=-100,
+    domain_max=100,
+    linthresh=1,
+    base=10,
+    clamp=True
+)
+```
+
+## Using Scalers with Colormaps
+
+The typical workflow is to create a scaler and use it with `apply_scaler()`:
+
+```python
+from palettize import create_colormap, get_scaler_by_name
+
+# Create colormap
+cmap = create_colormap(colors=["blue", "white", "red"])
+
+# Create scaler for your data range
+scaler = get_scaler_by_name("linear", domain_min=-50, domain_max=50)
+
+# Map data values to colors
+data = [-50, -25, 0, 25, 50]
+colors = [cmap.apply_scaler(v, scaler) for v in data]
+```
+
+## Clamping Behavior
+
+When `clamp=True` (default):
+- Values below `domain_min` return 0.0
+- Values above `domain_max` return 1.0
+
+When `clamp=False`:
+- Values can map outside [0, 1]
+- Useful for extrapolation
+
+```python
+scaler_clamped = get_scaler_by_name("linear", domain_min=0, domain_max=100, clamp=True)
+scaler_unclamped = get_scaler_by_name("linear", domain_min=0, domain_max=100, clamp=False)
+
+scaler_clamped(150)    # 1.0 (clamped)
+scaler_unclamped(150)  # 1.5 (extrapolated)
+```
+
+## ScalingFunction Type
+
+All scalers return a `ScalingFunction`, which is a callable that takes a float and returns a float:
+
+```python
+from palettize import ScalingFunction
+
+# Type hint for functions that accept scalers
+def apply_colors(data: list[float], scaler: ScalingFunction):
+    return [scaler(v) for v in data]
+```

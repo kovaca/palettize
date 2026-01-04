@@ -1,0 +1,176 @@
+---
+title: RGBA Export Format
+description: Export colormaps as plaintext RGBA colors
+---
+
+The RGBA exporter creates plaintext files with CSS-compatible RGBA color values.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `rgba` |
+| Extension | `.txt` |
+| Use case | CSS, web development, alpha transparency |
+
+## Output Format
+
+```
+rgba(68, 1, 84, 255)
+rgba(72, 40, 120, 255)
+rgba(62, 73, 137, 255)
+rgba(49, 104, 142, 255)
+rgba(38, 130, 142, 255)
+rgba(31, 158, 137, 255)
+rgba(53, 183, 121, 255)
+rgba(110, 206, 88, 255)
+rgba(181, 222, 43, 255)
+rgba(253, 231, 37, 255)
+```
+
+Each line contains RGBA values where R, G, B, and A are integers from 0-255.
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format rgba --output colors.txt
+
+# Specific number of colors
+palettize create viridis -f rgba -o colors.txt --steps 10
+
+# Print to stdout
+palettize create viridis -f rgba --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("rgba")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={"num_colors": 10}
+)
+
+# Parse into usable format
+import re
+colors = []
+for line in output.strip().split('\n'):
+    match = re.match(r'rgba\((\d+), (\d+), (\d+), (\d+)\)', line)
+    if match:
+        colors.append(tuple(map(int, match.groups())))
+
+print(colors)  # [(68, 1, 84, 255), (72, 40, 120, 255), ...]
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+
+## Use Cases
+
+### CSS Stylesheets
+
+```css
+.gradient {
+  background: linear-gradient(
+    to right,
+    rgba(68, 1, 84, 255),
+    rgba(49, 104, 142, 255),
+    rgba(253, 231, 37, 255)
+  );
+}
+```
+
+### Semi-transparent Colors
+
+The RGBA format preserves alpha values, useful for overlays:
+
+```css
+.overlay {
+  background-color: rgba(68, 1, 84, 128);  /* 50% opacity */
+}
+```
+
+### JavaScript Arrays
+
+```javascript
+const colors = [
+  'rgba(68, 1, 84, 255)',
+  'rgba(72, 40, 120, 255)',
+  'rgba(62, 73, 137, 255)'
+];
+
+// Use with Canvas
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = colors[0];
+```
+
+### Python Image Processing
+
+```python
+from PIL import Image
+import re
+
+# Parse RGBA output
+output = exporter.export(cmap, scaler, 0, 1, {"num_colors": 256})
+colors = []
+for line in output.strip().split('\n'):
+    match = re.match(r'rgba\((\d+), (\d+), (\d+), (\d+)\)', line)
+    if match:
+        colors.append(tuple(map(int, match.groups())))
+
+# Create a palette image
+width, height = 256, 50
+img = Image.new('RGBA', (width, height))
+for x in range(width):
+    for y in range(height):
+        img.putpixel((x, y), colors[x])
+img.save('colorbar.png')
+```
+
+### Data Visualization Libraries
+
+```python
+# Plotly
+import plotly.express as px
+
+colors_css = output.strip().split('\n')
+fig = px.scatter(df, x='x', y='y', color='value',
+                 color_continuous_scale=colors_css)
+```
+
+## Alpha Channel
+
+Unlike the [Hex format](/palettize/export-formats/hex/), RGBA includes the alpha channel:
+
+- Fully opaque: `rgba(68, 1, 84, 255)`
+- 50% transparent: `rgba(68, 1, 84, 128)`
+- Fully transparent: `rgba(68, 1, 84, 0)`
+
+By default, Palettize colormaps are fully opaque (alpha=255).
+
+## Converting to CSS rgba() with Normalized Alpha
+
+CSS `rgba()` typically uses alpha from 0-1, not 0-255. To convert:
+
+```python
+def to_css_rgba(rgba_string):
+    match = re.match(r'rgba\((\d+), (\d+), (\d+), (\d+)\)', rgba_string)
+    if match:
+        r, g, b, a = map(int, match.groups())
+        return f'rgba({r}, {g}, {b}, {a/255:.2f})'
+    return rgba_string
+
+# rgba(68, 1, 84, 255) -> rgba(68, 1, 84, 1.00)
+```

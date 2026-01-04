@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="viridis" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#440154"/>
+      <stop offset="25%" style="stop-color:#3b528b"/>
+      <stop offset="50%" style="stop-color:#21918c"/>
+      <stop offset="75%" style="stop-color:#5ec962"/>
+      <stop offset="100%" style="stop-color:#fde725"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="80" height="80" rx="12" fill="url(#viridis)"/>
+</svg>

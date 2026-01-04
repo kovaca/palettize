@@ -1,0 +1,101 @@
+---
+title: Quick Start
+description: Get started with Palettize in minutes
+---
+
+This guide will walk you through the basic usage of Palettize. By the end, you'll know how to preview colormaps, create exports, and use Palettize from Python.
+
+## Preview a Colormap
+
+The `show` command renders a colormap preview directly in your terminal:
+
+```bash
+# Show a built-in preset
+palettize show viridis
+
+# Show a custom gradient
+palettize show --colors "midnightblue,orange,gold"
+```
+
+You can adjust the preview size:
+
+```bash
+palettize show viridis --width 80 --height 3
+```
+
+## Export a Colormap
+
+The `create` command exports colormaps to various file formats:
+
+```bash
+# Export viridis to GDAL format with a data domain of 0-255
+palettize create viridis --format gdal --output viridis.txt --domain 0,255
+```
+
+### Custom Colors
+
+Instead of using a preset, you can define your own colors:
+
+```bash
+palettize create --colors "blue,white,red" --format gdal --output bwr.txt --domain 0,100
+```
+
+### Multiple Formats
+
+Export to multiple formats at once using the `{name}`, `{format}`, and `{ext}` placeholders:
+
+```bash
+palettize create viridis --format gdal,qgis,mapgl \
+  --output "output/{name}_{format}.{ext}" \
+  --domain 0,255 \
+  --steps 11
+```
+
+This creates:
+- `output/viridis_gdal.txt`
+- `output/viridis_qgis.xml`
+- `output/viridis_mapgl.json`
+
+## List Available Resources
+
+See what presets and exporters are available:
+
+```bash
+# List all colormap presets
+palettize list presets
+
+# List all export formats
+palettize list exporters
+```
+
+## Using from Python
+
+Palettize can also be used as a library:
+
+```python
+from palettize import create_colormap, get_scaler_by_name
+
+# Create a colormap from a preset
+cmap = create_colormap(preset="viridis", name="Viridis")
+
+# Get a color at a specific position (0-1)
+hex_color = cmap.get_color(0.5)  # Returns "#21918c"
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # Returns (33, 145, 140)
+
+# Create from custom colors
+cmap2 = create_colormap(
+    colors=["#0000ff", "white", "#ff0000"],
+    name="BlueWhiteRed"
+)
+
+# Use a scaler to map data values to colors
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+color_at_50 = cmap2.apply_scaler(50, scaler)  # Color at the midpoint
+```
+
+## Next Steps
+
+- Learn about all [CLI commands](/palettize/cli/)
+- Explore the [Python API](/palettize/python-api/)
+- See all [Export Formats](/palettize/export-formats/)
+- Understand [Color Interpolation](/palettize/guides/color-interpolation/)

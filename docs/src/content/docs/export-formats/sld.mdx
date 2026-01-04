@@ -1,0 +1,162 @@
+---
+title: SLD Export Format
+description: Export colormaps for OGC Styled Layer Descriptor
+---
+
+The SLD exporter creates OGC Styled Layer Descriptor XML files for use with GeoServer, WMS services, and other OGC-compliant applications.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `sld` |
+| Extension | `.sld` |
+| Use case | GeoServer, WMS, OGC services |
+
+## Output Format
+
+```xml
+<?xml version='1.0' encoding='utf-8'?>
+<sld:StyledLayerDescriptor version="1.0.0" ...>
+  <sld:UserLayer>
+    <sld:Name>palettize_layer</sld:Name>
+    <sld:UserStyle>
+      <sld:Name>palettize_style</sld:Name>
+      <sld:IsDefault>1</sld:IsDefault>
+      <sld:FeatureTypeStyle>
+        <sld:Rule>
+          <sld:Name>Default Rule</sld:Name>
+          <sld:RasterSymbolizer>
+            <sld:ColorMap type="ramp">
+              <sld:ColorMapEntry color="#440154" quantity="0.000000" opacity="1.00"/>
+              <sld:ColorMapEntry color="#482878" quantity="28.333333" opacity="1.00"/>
+              ...
+            </sld:ColorMap>
+          </sld:RasterSymbolizer>
+        </sld:Rule>
+      </sld:FeatureTypeStyle>
+    </sld:UserStyle>
+  </sld:UserLayer>
+</sld:StyledLayerDescriptor>
+```
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format sld --output viridis.sld --domain 0,255
+
+# With custom layer and style names
+palettize create viridis -f sld -o viridis.sld --domain 0,255 \
+  -O layer_name=elevation -O style_name=elevation_style
+
+# Intervals type (discrete classes)
+palettize create viridis -f sld -o viridis.sld --domain 0,255 \
+  -O output_type=intervals
+
+# For polygon layers
+palettize create viridis -f sld -o viridis.sld --domain 0,100 \
+  -O geometry_type=polygon
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("sld")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={
+        "num_colors": 256,
+        "layer_name": "elevation",
+        "style_name": "elevation_viridis",
+        "output_type": "ramp"
+    }
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of color steps for ramp type |
+| `sld_version` | `str` | `"1.0.0"` | SLD version |
+| `output_type` | `str` | `"ramp"` | ColorMap type: `"ramp"`, `"intervals"`, `"values"` |
+| `opacity` | `float` | | Global opacity (0.0-1.0), overrides stop alpha |
+| `layer_name` | `str` | `"palettize_layer"` | UserLayer name |
+| `style_name` | `str` | `"palettize_style"` | UserStyle name |
+| `geometry_type` | `str` | `"raster"` | Symbolizer type: `"raster"`, `"polygon"`, `"line"` |
+| `band` | `int` | | Band number for RasterSymbolizer |
+
+## ColorMap Types
+
+### Ramp (Default)
+
+Continuous interpolation between colors. Best for continuous data.
+
+```bash
+palettize create viridis -f sld -o style.sld --domain 0,255 -O output_type=ramp
+```
+
+### Intervals
+
+Discrete color classes. Each entry defines the minimum value of its class.
+
+```bash
+palettize create viridis -f sld -o style.sld --domain 0,255 -O output_type=intervals
+```
+
+### Values
+
+Exact value matching. Only matching values get colorized.
+
+```bash
+palettize create viridis -f sld -o style.sld --domain 0,255 -O output_type=values
+```
+
+## Using with GeoServer
+
+### Upload Style
+
+1. Go to **Data > Styles** in GeoServer admin
+2. Click **Add new style**
+3. Paste the SLD content or upload the file
+4. Click **Validate** to check for errors
+5. Click **Submit** to save
+
+### Apply to Layer
+
+1. Go to **Data > Layers**
+2. Select your layer
+3. Go to **Publishing** tab
+4. Set **Default Style** to your new style
+
+## Multi-band Rasters
+
+For multi-band rasters, specify the band number:
+
+```bash
+# Use band 1
+palettize create viridis -f sld -o style.sld --domain 0,255 -O band=1
+```
+
+## SLD Versions
+
+### SLD 1.0.0 (Default)
+
+Compatible with most GeoServer versions and WMS services.
+
+### SLD 1.1.0
+
+Uses Symbology Encoding (SE) namespace. Better support for advanced features.
+
+```bash
+palettize create viridis -f sld -o style.sld --domain 0,255 -O sld_version=1.1.0
+```

@@ -1,0 +1,56 @@
+---
+title: Palettize
+description: A Python CLI tool for generating, previewing, and exporting colormaps for GIS and web mapping.
+template: splash
+hero:
+  tagline: Generate, preview, and export colormaps from the command line or Python
+  actions:
+    - text: Get Started
+      link: /palettize/getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/kovaca/palettize
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+  <Card title="9 Export Formats" icon="document">
+    Export to GDAL, QGIS, SLD, TiTiler, MapLibre GL, Observable Plot, Google Earth Engine, Hex, and RGBA formats.
+  </Card>
+  <Card title="Advanced Interpolation" icon="setting">
+    Use various color spaces like Oklch, sRGB, LAB, and HCL via the ColorAide library.
+  </Card>
+  <Card title="Flexible Scaling" icon="bars">
+    Apply linear, power, sqrt, log, or symlog scaling to map your data domain to colors.
+  </Card>
+  <Card title="Rich Presets" icon="list-format">
+    Access hundreds of colormaps from the cmap library including viridis, magma, inferno, and more.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+```bash
+# Preview a colormap in the terminal
+palettize show viridis
+
+# Create a custom gradient and export to GDAL format
+palettize create --colors "blue,white,red" --format gdal --output bwr.txt --domain 0,255
+
+# Export to multiple formats at once
+palettize create viridis --format gdal,qgis,mapgl --output "{name}_{format}.{ext}"
+```
+
+## Why Palettize?
+
+Palettize bridges the gap between data visualization and GIS/web mapping workflows. Instead of manually creating color ramps in different formats, Palettize lets you:
+
+- **Define once, export everywhere**: Create a colormap and export it to any supported format
+- **Preview instantly**: See your colormap in the terminal before exporting
+- **Use perceptually uniform color spaces**: Get better color interpolation with Oklch and LAB
+- **Scale to your data**: Map colormaps to your actual data domain with various scaling functions

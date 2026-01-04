@@ -1,0 +1,244 @@
+---
+title: GIS Workflows
+description: Using Palettize with GIS applications
+---
+
+This guide demonstrates common GIS workflows using Palettize to create colormaps for desktop GIS, web services, and raster processing.
+
+## GDAL Raster Coloring
+
+### Colorize a DEM
+
+```bash
+# Create a terrain colormap
+palettize create --colors "darkgreen,yellow,brown,white" \
+  --format gdal --output terrain.txt --domain 0,4000 --steps 256
+
+# Apply with gdaldem
+gdaldem color-relief dem.tif terrain.txt colored_dem.tif
+```
+
+### Colorize NDVI
+
+```bash
+# Red-yellow-green for vegetation
+palettize create --colors "#8B0000,#FFD700,#228B22" \
+  --format gdal --output ndvi.txt --domain -1,1 --steps 256
+
+gdaldem color-relief ndvi.tif ndvi.txt colored_ndvi.tif
+```
+
+### Temperature Anomalies
+
+```bash
+# Diverging colormap for anomalies
+palettize create RdBu --format gdal --output temp.txt \
+  --domain -10,10 --steps 256
+
+gdaldem color-relief temp_anomaly.tif temp.txt colored_temp.tif
+```
+
+## QGIS Styling
+
+### Create and Import Style
+
+```bash
+# Export viridis for QGIS
+palettize create viridis --format qgis --output viridis.xml \
+  --domain 0,255 --steps 11
+```
+
+In QGIS:
+1. **Settings > Style Manager > Import**
+2. Select `viridis.xml`
+3. Apply to your raster layer
+
+### Pseudocolor Raster
+
+```bash
+# Create a colormap for elevation data
+palettize create terrain --format qgis --output elevation.xml \
+  --domain 0,3000 -O ramp_type=gradient --steps 20
+```
+
+### Classified Raster
+
+```bash
+# Discrete classes
+palettize create viridis --format qgis --output classes.xml \
+  --domain 0,5 -O ramp_type=exact --steps 6
+```
+
+## GeoServer SLD Styling
+
+### Raster Layer Style
+
+```bash
+# Create SLD for a raster layer
+palettize create viridis --format sld --output elevation.sld \
+  --domain 0,1000 -O layer_name=dem -O style_name=elevation_viridis
+
+# Upload to GeoServer
+curl -u admin:geoserver -XPOST \
+  -H "Content-Type: application/vnd.ogc.sld+xml" \
+  -d @elevation.sld \
+  "http://localhost:8080/geoserver/rest/styles"
+```
+
+### Polygon Thematic Map
+
+```bash
+# SLD for polygon data
+palettize create YlOrRd --format sld --output population.sld \
+  --domain 0,1000000 -O geometry_type=polygon \
+  -O layer_name=counties -O style_name=population_density \
+  --scale log
+```
+
+## Complete Workflow: Elevation Mapping
+
+### 1. Prepare Colormap
+
+```bash
+# Create a terrain colormap with multiple formats
+palettize create --colors "darkblue,lightblue,green,yellow,orange,brown,white" \
+  --format gdal,qgis,sld \
+  --output "elevation_{format}.{ext}" \
+  --domain -100,4000 \
+  --steps 256 \
+  --name "Elevation"
+```
+
+### 2. Process with GDAL
+
+```bash
+# Apply to DEM
+gdaldem color-relief input_dem.tif elevation_gdal.txt output_colored.tif \
+  -of GTiff -co COMPRESS=LZW -co TILED=YES
+```
+
+### 3. Import to QGIS
+
+```python
+# QGIS Python Console
+from qgis.core import QgsRasterLayer, QgsProject
+
+layer = QgsRasterLayer("output_colored.tif", "Elevation")
+QgsProject.instance().addMapLayer(layer)
+```
+
+### 4. Publish to GeoServer
+
+```bash
+# Upload style
+curl -u admin:geoserver -XPOST \
+  -H "Content-Type: application/vnd.ogc.sld+xml" \
+  -d @elevation_sld.sld \
+  "http://localhost:8080/geoserver/rest/styles"
+
+# Apply to layer
+curl -u admin:geoserver -XPUT \
+  -H "Content-Type: text/xml" \
+  -d "<layer><defaultStyle><name>Elevation</name></defaultStyle></layer>" \
+  "http://localhost:8080/geoserver/rest/layers/workspace:dem_layer"
+```
+
+## Python Integration
+
+### Batch Process Multiple DEMs
+
+```python
+import subprocess
+from pathlib import Path
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+# Create colormap
+cmap = create_colormap(
+    colors=["darkgreen", "yellow", "brown", "white"],
+    name="Terrain"
+)
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=4000)
+exporter = get_exporter("gdal")
+
+# Export
+color_file = Path("terrain.txt")
+color_file.write_text(
+    exporter.export(cmap, scaler, 0, 4000, {"num_colors": 256})
+)
+
+# Process multiple DEMs
+dem_files = Path("dems").glob("*.tif")
+for dem in dem_files:
+    output = Path("colored") / f"{dem.stem}_colored.tif"
+    subprocess.run([
+        "gdaldem", "color-relief",
+        str(dem), str(color_file), str(output),
+        "-of", "GTiff", "-co", "COMPRESS=LZW"
+    ])
+```
+
+### Dynamic Color Assignment
+
+```python
+from palettize import create_colormap, get_scaler_by_name
+import rasterio
+import numpy as np
+
+# Load raster to get value range
+with rasterio.open("data.tif") as src:
+    data = src.read(1)
+    valid = data[data != src.nodata]
+    vmin, vmax = np.percentile(valid, [2, 98])
+
+# Create colormap for actual data range
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=vmin, domain_max=vmax)
+
+# Generate colors for visualization
+colors = []
+for val in np.linspace(vmin, vmax, 10):
+    colors.append(cmap.apply_scaler(val, scaler))
+print(colors)
+```
+
+## Tips for GIS Workflows
+
+### Choosing Color Counts
+
+| Use Case | Recommended Steps |
+|----------|-------------------|
+| GDAL color-relief | 256 (smooth gradient) |
+| QGIS pseudocolor | 10-20 (discrete classes) |
+| SLD ramp | 256 (continuous) |
+| SLD intervals | 5-10 (classified) |
+| Print maps | 7-11 (readable legend) |
+
+### Data Domain Selection
+
+```bash
+# Check actual data range first
+gdalinfo -mm your_raster.tif
+
+# Use percentiles to avoid outliers
+palettize create viridis -f gdal -o output.txt --domain 10,990
+```
+
+### Handling NoData
+
+```bash
+# GDAL with NoData
+palettize create viridis -f gdal -o output.txt \
+  --domain 0,255 -O nodata_value=nv -O "nodata_color=0,0,0,0"
+```
+
+### Scaling for Skewed Data
+
+```bash
+# Log scale for population density
+palettize create YlOrRd -f gdal -o pop.txt \
+  --domain 1,100000 --scale log
+
+# Sqrt scale for count data
+palettize create viridis -f gdal -o counts.txt \
+  --domain 0,10000 --scale sqrt
+```

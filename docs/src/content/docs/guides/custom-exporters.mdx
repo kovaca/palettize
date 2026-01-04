@@ -1,0 +1,295 @@
+---
+title: Custom Exporters
+description: Creating custom export format plugins
+---
+
+Palettize's exporter system is extensible. You can create custom exporters for your specific output formats and distribute them as plugins.
+
+## Creating an Exporter
+
+All exporters inherit from `BaseExporter` and implement required methods.
+
+### Basic Structure
+
+```python
+from palettize.exporters._base import BaseExporter
+from palettize.core import Colormap
+from palettize import ScalingFunction
+from typing import Any, Dict, Optional
+
+class MyExporter(BaseExporter):
+    @property
+    def identifier(self) -> str:
+        """Unique identifier used in CLI and get_exporter()"""
+        return "myformat"
+
+    @property
+    def name(self) -> str:
+        """Human-readable name"""
+        return "My Custom Format"
+
+    @property
+    def default_file_extension(self) -> Optional[str]:
+        """Default file extension (without dot)"""
+        return "txt"
+
+    def export(
+        self,
+        colormap: Colormap,
+        scaler: ScalingFunction,
+        domain_min: float,
+        domain_max: float,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Generate output string"""
+        options = options or {}
+        num_colors = options.get("num_colors", 10)
+
+        lines = []
+        for i in range(num_colors):
+            position = i / (num_colors - 1)
+            data_val = domain_min + position * (domain_max - domain_min)
+            color = colormap.apply_scaler(data_val, scaler)
+            lines.append(f"{data_val}: {color}")
+
+        return "\n".join(lines)
+```
+
+### Required Methods
+
+| Method | Type | Description |
+|--------|------|-------------|
+| `identifier` | property | Unique string ID |
+| `name` | property | Display name |
+| `export()` | method | Generate output string |
+
+### Optional Methods
+
+| Method | Type | Default | Description |
+|--------|------|---------|-------------|
+| `default_file_extension` | property | `None` | Suggested file extension |
+
+## Registering an Exporter
+
+### Local Registration
+
+For use within your project:
+
+```python
+from palettize import register_exporter
+
+exporter = MyExporter()
+register_exporter(exporter)
+
+# Now available via get_exporter
+from palettize import get_exporter
+my_exp = get_exporter("myformat")
+```
+
+### Overwriting Built-ins
+
+To replace an existing exporter:
+
+```python
+register_exporter(exporter, overwrite=True)
+```
+
+## Creating a Plugin Package
+
+Distribute your exporter as an installable package.
+
+### Package Structure
+
+```
+my-palettize-exporters/
+├── pyproject.toml
+├── src/
+│   └── my_exporters/
+│       ├── __init__.py
+│       └── formats.py
+```
+
+### Define the Exporter
+
+`src/my_exporters/formats.py`:
+
+```python
+from palettize.exporters._base import BaseExporter
+from palettize.core import Colormap
+from palettize import ScalingFunction
+from typing import Any, Dict, Optional
+
+class CSVExporter(BaseExporter):
+    @property
+    def identifier(self) -> str:
+        return "csv"
+
+    @property
+    def name(self) -> str:
+        return "CSV Color Table"
+
+    @property
+    def default_file_extension(self) -> Optional[str]:
+        return "csv"
+
+    def export(
+        self,
+        colormap: Colormap,
+        scaler: ScalingFunction,
+        domain_min: float,
+        domain_max: float,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        options = options or {}
+        num_colors = options.get("num_colors", 256)
+
+        lines = ["value,r,g,b,a"]
+        for i in range(num_colors):
+            pos = i / (num_colors - 1)
+            data_val = domain_min + pos * (domain_max - domain_min)
+            rgba = colormap.apply_scaler(data_val, scaler, output_format="rgba_tuple")
+            r, g, b, a = rgba
+            lines.append(f"{data_val},{r},{g},{b},{a}")
+
+        return "\n".join(lines)
+```
+
+### Register via Entry Points
+
+`pyproject.toml`:
+
+```toml
+[project]
+name = "my-palettize-exporters"
+version = "0.1.0"
+dependencies = ["palettize"]
+
+[project.entry-points."palettize.exporters"]
+csv = "my_exporters.formats:CSVExporter"
+```
+
+### Install and Use
+
+```bash
+pip install my-palettize-exporters
+
+# Now available in CLI
+palettize list exporters  # Shows "csv"
+palettize create viridis -f csv -o colors.csv --domain 0,255
+```
+
+## Advanced Example: XML Exporter
+
+```python
+import xml.etree.ElementTree as ET
+from palettize.exporters._base import BaseExporter
+from palettize.core import Colormap
+from palettize import ScalingFunction
+from typing import Any, Dict, Optional
+
+class XMLColorTableExporter(BaseExporter):
+    @property
+    def identifier(self) -> str:
+        return "xmlct"
+
+    @property
+    def name(self) -> str:
+        return "XML Color Table"
+
+    @property
+    def default_file_extension(self) -> Optional[str]:
+        return "xml"
+
+    def export(
+        self,
+        colormap: Colormap,
+        scaler: ScalingFunction,
+        domain_min: float,
+        domain_max: float,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        options = options or {}
+        num_colors = options.get("num_colors", 256)
+        cmap_name = options.get("name", colormap.name or "colormap")
+
+        root = ET.Element("ColorTable", name=cmap_name)
+        root.set("domain_min", str(domain_min))
+        root.set("domain_max", str(domain_max))
+
+        for i in range(num_colors):
+            pos = i / (num_colors - 1)
+            data_val = domain_min + pos * (domain_max - domain_min)
+            hex_color = colormap.apply_scaler(data_val, scaler)
+
+            entry = ET.SubElement(root, "Entry")
+            entry.set("value", f"{data_val:.4f}")
+            entry.set("color", hex_color)
+
+        try:
+            ET.indent(root, space="  ")
+        except AttributeError:
+            pass  # Python < 3.9
+
+        return ET.tostring(root, encoding="unicode", xml_declaration=True)
+```
+
+## Handling Options
+
+Document and validate your options:
+
+```python
+def export(self, colormap, scaler, domain_min, domain_max, options=None):
+    """
+    Export colormap to My Format.
+
+    Options:
+        num_colors (int): Number of colors. Default 256.
+        include_header (bool): Include header line. Default True.
+        precision (int): Decimal places. Default 2.
+    """
+    options = options or {}
+
+    # Get with defaults
+    num_colors = options.get("num_colors", 256)
+    include_header = options.get("include_header", True)
+    precision = options.get("precision", 2)
+
+    # Validate
+    if not isinstance(num_colors, int) or num_colors < 2:
+        raise ValueError("num_colors must be an integer >= 2")
+
+    # Use options...
+```
+
+## Testing Your Exporter
+
+```python
+import pytest
+from palettize import create_colormap, get_scaler_by_name
+from my_exporters.formats import CSVExporter
+
+def test_csv_export():
+    cmap = create_colormap(preset="viridis")
+    scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+    exporter = CSVExporter()
+
+    output = exporter.export(cmap, scaler, 0, 100, {"num_colors": 5})
+
+    lines = output.strip().split("\n")
+    assert lines[0] == "value,r,g,b,a"
+    assert len(lines) == 6  # header + 5 colors
+
+def test_csv_identifier():
+    exporter = CSVExporter()
+    assert exporter.identifier == "csv"
+    assert exporter.default_file_extension == "csv"
+```
+
+## Best Practices
+
+1. **Validate options**: Check types and ranges
+2. **Document options**: List accepted options in docstrings
+3. **Handle edge cases**: Empty colormaps, single color, etc.
+4. **Use meaningful defaults**: Most users won't specify options
+5. **Return strings**: The `export()` method always returns a string
+6. **Test thoroughly**: Cover various colormap types and options

@@ -1,0 +1,64 @@
+---
+title: Installation
+description: How to install Palettize
+---
+
+## Requirements
+
+- Python 3.9 or higher (supports Python 3.9, 3.10, 3.11, 3.12, and 3.13)
+
+## Install from PyPI
+
+The recommended way to install Palettize is via pip or uv:
+
+```bash
+# Using pip
+pip install palettize
+
+# Using uv (recommended)
+uv pip install palettize
+```
+
+## Install from Source
+
+To install the latest development version from GitHub:
+
+```bash
+git clone https://github.com/kovaca/palettize.git
+cd palettize
+pip install .
+```
+
+Or with uv:
+
+```bash
+git clone https://github.com/kovaca/palettize.git
+cd palettize
+uv pip install .
+```
+
+## Verify Installation
+
+After installation, verify that Palettize is working:
+
+```bash
+palettize --version
+```
+
+You should see the version number printed to the console.
+
+## Dependencies
+
+Palettize automatically installs the following dependencies:
+
+| Package | Purpose |
+|---------|---------|
+| [coloraide](https://github.com/facelessuser/coloraide) | Advanced color manipulation and interpolation |
+| [typer](https://typer.tiangolo.com/) | CLI framework |
+| [rich](https://rich.readthedocs.io/) | Terminal formatting and colors |
+| [webcolors](https://webcolors.readthedocs.io/) | Named color support |
+| [cmap](https://cmap-docs.readthedocs.io/) | Colormap presets library |
+
+## Next Steps
+
+Once installed, head to the [Quick Start](/palettize/getting-started/quick-start/) guide to learn the basics.

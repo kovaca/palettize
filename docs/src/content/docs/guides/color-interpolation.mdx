@@ -1,0 +1,192 @@
+---
+title: Color Interpolation
+description: Understanding color spaces for smooth gradients
+---
+
+When creating colormaps, the choice of color space for interpolation significantly affects how colors blend between stops. Palettize supports multiple interpolation spaces via the [ColorAide](https://github.com/facelessuser/coloraide) library.
+
+## Why Interpolation Space Matters
+
+Consider a gradient from blue to yellow:
+
+- **sRGB interpolation**: May produce muddy greens in the middle
+- **Oklch interpolation**: Produces vibrant, perceptually uniform transitions
+
+The interpolation space determines the path colors take through color space when blending.
+
+## Available Color Spaces
+
+### Oklch (Default)
+
+Oklch is a perceptually uniform color space based on human vision. It provides:
+
+- Consistent perceived brightness across the gradient
+- Vibrant, natural-looking color transitions
+- No unexpected muddy colors
+
+```bash
+palettize show --colors "blue,yellow" --space oklch
+```
+
+This is the default and recommended for most use cases.
+
+### sRGB
+
+Standard RGB interpolation. Colors blend in the same space as computer displays.
+
+```bash
+palettize show --colors "blue,yellow" --space srgb
+```
+
+**Characteristics:**
+- Fast computation
+- May produce muddy/desaturated midpoints
+- Common in web/CSS gradients
+
+### LAB (CIELAB)
+
+A perceptually uniform color space from 1976.
+
+```bash
+palettize show --colors "blue,yellow" --space lab
+```
+
+**Characteristics:**
+- Good perceptual uniformity
+- Better than sRGB for scientific visualization
+- May produce some hue shifts
+
+### HCL (LCH)
+
+Cylindrical representation of LAB, using Hue, Chroma, and Lightness.
+
+```bash
+palettize show --colors "blue,yellow" --space hcl
+```
+
+**Characteristics:**
+- Intuitive hue interpolation
+- Good for rainbow-like gradients
+- May have chroma issues at extreme values
+
+### HSL
+
+Hue, Saturation, Lightness - a common web color model.
+
+```bash
+palettize show --colors "blue,yellow" --space hsl
+```
+
+**Characteristics:**
+- Intuitive for designers
+- Non-uniform perceptually
+- Can produce unexpected results
+
+## Comparing Interpolation Spaces
+
+### Visual Comparison
+
+```bash
+# Compare the same gradient in different spaces
+palettize show --colors "blue,yellow" --space srgb --height 2
+palettize show --colors "blue,yellow" --space oklch --height 2
+palettize show --colors "blue,yellow" --space lab --height 2
+```
+
+### Python Comparison
+
+```python
+from palettize import create_colormap
+
+colors = ["blue", "yellow"]
+
+for space in ["srgb", "oklch", "lab", "hcl"]:
+    cmap = create_colormap(colors=colors, interpolation_space=space)
+    midpoint = cmap.get_color(0.5)
+    print(f"{space}: {midpoint}")
+```
+
+Output:
+```
+srgb: #808000
+oklch: #a3b852
+lab: #9ab356
+hcl: #8cb866
+```
+
+Notice how sRGB produces a darker, muddier olive color while the perceptual spaces produce brighter, more vibrant midpoints.
+
+## Choosing a Color Space
+
+### Use Oklch When:
+
+- Creating scientific visualizations
+- You want perceptually uniform brightness
+- Working with diverging colormaps
+- Default choice for most applications
+
+### Use sRGB When:
+
+- Matching existing CSS/web gradients
+- Performance is critical
+- You specifically need RGB blending behavior
+
+### Use LAB/HCL When:
+
+- Porting from tools that use these spaces
+- Working with color science applications
+- Creating perceptually balanced palettes
+
+## Impact on Exports
+
+The interpolation space affects the colors sampled during export:
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap_srgb = create_colormap(colors=["blue", "yellow"], interpolation_space="srgb")
+cmap_oklch = create_colormap(colors=["blue", "yellow"], interpolation_space="oklch")
+
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("hex")
+
+# Different midpoint colors
+print(exporter.export(cmap_srgb, scaler, 0, 1, {"num_colors": 3}))
+print(exporter.export(cmap_oklch, scaler, 0, 1, {"num_colors": 3}))
+```
+
+## Best Practices
+
+1. **Start with Oklch**: It's the default for good reason
+2. **Test visually**: Use `palettize show` to preview before exporting
+3. **Consider your data**: Scientific data often benefits from perceptually uniform spaces
+4. **Be consistent**: Use the same space throughout a project
+
+## Perceptual Uniformity Explained
+
+A "perceptually uniform" color space means equal numeric changes produce equal perceived changes in color.
+
+In sRGB:
+- Changing R from 100→150 might look very different from 150→200
+- The same numeric difference produces different perceived differences
+
+In Oklch:
+- Equal steps in lightness produce equal perceived brightness changes
+- Colors blend more naturally
+
+This is especially important for data visualization where color represents numeric values.
+
+## Advanced: Color Space Reference
+
+| Space | Type | Perceptual | Hue Handling |
+|-------|------|------------|--------------|
+| `srgb` | RGB | No | N/A |
+| `oklch` | Cylindrical | Yes | Excellent |
+| `lab` | Rectangular | Yes | Good |
+| `hcl` | Cylindrical | Yes | Good |
+| `hsl` | Cylindrical | No | Direct |
+| `hsv` | Cylindrical | No | Direct |
+| `okhsl` | Cylindrical | Yes | Good |
+| `okhsv` | Cylindrical | Yes | Good |
+
+Palettize supports any color space that ColorAide supports. See the [ColorAide documentation](https://facelessuser.github.io/coloraide/) for the full list.

@@ -1,0 +1,226 @@
+---
+title: Colormap Class
+description: Creating and using colormaps in Python
+---
+
+The `Colormap` class is the core of Palettize, representing a colormap defined by color stops with optional positions.
+
+## create_colormap()
+
+The recommended way to create colormaps is using the `create_colormap()` factory function:
+
+```python
+from palettize import create_colormap
+
+# From a preset
+cmap = create_colormap(preset="viridis")
+
+# From custom colors
+cmap = create_colormap(colors=["blue", "white", "red"])
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `preset` | `str \| None` | `None` | Name of a preset palette |
+| `colors` | `list \| None` | `None` | List of colors |
+| `interpolation_space` | `str` | `"oklch"` | Color space for interpolation |
+| `name` | `str \| None` | `None` | Display name for the colormap |
+| `cut_start` | `float` | `0.0` | Start of sub-segment (0-1) |
+| `cut_end` | `float` | `1.0` | End of sub-segment (0-1) |
+
+You must provide exactly one of `preset` or `colors`.
+
+### Color Input Formats
+
+Colors can be specified in multiple formats:
+
+```python
+# Named colors
+create_colormap(colors=["red", "blue", "green"])
+
+# Hex strings
+create_colormap(colors=["#ff0000", "#00ff00", "#0000ff"])
+
+# RGB tuples (0-255)
+create_colormap(colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)])
+
+# RGB tuples (0-1)
+create_colormap(colors=[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0)])
+
+# Mixed formats
+create_colormap(colors=["red", "#00ff00", (0, 0, 255)])
+```
+
+## Colormap Class
+
+For more control, you can use the `Colormap` class directly.
+
+### Class Methods
+
+#### Colormap.from_preset()
+
+```python
+from palettize import Colormap
+
+cmap = Colormap.from_preset(
+    preset_name="viridis",
+    interpolation_space="oklch",
+    cut_start=0.0,
+    cut_end=1.0
+)
+```
+
+#### Colormap.from_list()
+
+```python
+from palettize import Colormap
+
+cmap = Colormap.from_list(
+    colors=["blue", "white", "red"],
+    name="BWR",
+    interpolation_space="oklch",
+    cut_start=0.0,
+    cut_end=1.0
+)
+```
+
+### Instance Methods
+
+#### get_color()
+
+Returns the interpolated color at a position (0-1) in the specified format.
+
+```python
+cmap = create_colormap(preset="viridis")
+
+# Hex string (default)
+hex_color = cmap.get_color(0.5)  # "#21918c"
+
+# RGB tuple (0-255)
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 140)
+
+# RGBA tuple (0-255)
+rgba = cmap.get_color(0.5, output_format="rgba_tuple")  # (33, 145, 140, 255)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `position` | `float` | | Position in colormap (0-1) |
+| `output_format` | `str` | `"hex"` | Format: `"hex"`, `"rgb_tuple"`, `"rgba_tuple"` |
+
+#### get_color_object()
+
+Returns the interpolated color as a [ColorAide](https://github.com/facelessuser/coloraide) `Color` object for advanced manipulation:
+
+```python
+color_obj = cmap.get_color_object(0.5)
+
+# Access color properties
+print(color_obj.space())  # "oklch"
+print(color_obj.coords())  # Color coordinates
+
+# Convert to other spaces
+srgb = color_obj.convert("srgb")
+lab = color_obj.convert("lab")
+```
+
+#### apply_scaler()
+
+Maps a data value to a color using a scaling function:
+
+```python
+from palettize import create_colormap, get_scaler_by_name
+
+cmap = create_colormap(colors=["blue", "white", "red"])
+scaler = get_scaler_by_name("linear", domain_min=-100, domain_max=100)
+
+# Get colors for data values
+color_neg = cmap.apply_scaler(-50, scaler)   # Blue-ish
+color_zero = cmap.apply_scaler(0, scaler)    # White
+color_pos = cmap.apply_scaler(50, scaler)    # Red-ish
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `data_value` | `float` | | The data value to map |
+| `scaler` | `ScalingFunction` | | A scaling function |
+| `output_format` | `str` | `"hex"` | Output format |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `str \| None` | Colormap display name |
+| `stops` | `list[ColorStop]` | List of color stops |
+| `interpolation_space` | `str` | Color interpolation space |
+| `cut_start` | `float` | Start of sub-segment (0-1) |
+| `cut_end` | `float` | End of sub-segment (0-1) |
+
+## ColorStop
+
+A `ColorStop` represents a single color in the colormap with an optional position.
+
+```python
+from palettize import ColorStop
+
+# Position is optional (auto-calculated if not provided)
+stop1 = ColorStop(color="red")
+stop2 = ColorStop(color="blue", position=0.5)
+stop3 = ColorStop(color="#00ff00", position=1.0)
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `color` | `InputColor` | Original color input |
+| `position` | `float \| None` | Position in colormap (0-1) |
+| `parsed_color` | `Color` | Parsed ColorAide Color object |
+
+## Using the Cut Feature
+
+The `cut_start` and `cut_end` parameters let you use only a portion of a colormap:
+
+```python
+# Use only the middle portion of viridis
+cmap = create_colormap(
+    preset="viridis",
+    cut_start=0.2,  # Skip first 20%
+    cut_end=0.8     # Skip last 20%
+)
+
+# Position 0 now maps to what was position 0.2
+# Position 1 now maps to what was position 0.8
+color_start = cmap.get_color(0)  # Color at original 0.2
+color_end = cmap.get_color(1)    # Color at original 0.8
+```
+
+## Interpolation Spaces
+
+The `interpolation_space` parameter controls how colors are blended. Common options:
+
+| Space | Description |
+|-------|-------------|
+| `oklch` | Perceptually uniform, good for most cases (default) |
+| `srgb` | Standard RGB, may produce muddy transitions |
+| `lab` | CIELAB, perceptually uniform |
+| `hsl` | Hue-Saturation-Lightness |
+| `oklch` | Improved perceptual uniformity |
+
+```python
+# Compare interpolation spaces
+colors = ["blue", "yellow"]
+
+cmap_srgb = create_colormap(colors=colors, interpolation_space="srgb")
+cmap_oklch = create_colormap(colors=colors, interpolation_space="oklch")
+cmap_lab = create_colormap(colors=colors, interpolation_space="lab")
+
+# Get midpoint color in each space
+print(cmap_srgb.get_color(0.5))   # Different results
+print(cmap_oklch.get_color(0.5))
+print(cmap_lab.get_color(0.5))
+```
+
+See the [Color Interpolation guide](/palettize/guides/color-interpolation/) for more details.

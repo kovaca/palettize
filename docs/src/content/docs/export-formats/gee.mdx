@@ -1,0 +1,185 @@
+---
+title: Google Earth Engine Export Format
+description: Export colormaps for Google Earth Engine
+---
+
+The Google Earth Engine exporter creates JavaScript code snippets for use in the GEE Code Editor.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `gee` |
+| Extension | `.js` |
+| Use case | Google Earth Engine Code Editor |
+
+## Output Formats
+
+### Default Mode
+
+The default output is a JavaScript object with palette and visualization parameters:
+
+```javascript
+var palettize_viz = {
+  min: 0,
+  max: 255,
+  palette: ['440154', '482878', '3e4989', '31688e', '26828e', '1f9e89', '35b779', '6ece58', 'b5de2b', 'fde725']
+};
+```
+
+### SLD Mode
+
+The SLD mode generates an SLD-style color map string:
+
+```javascript
+var palettize_sld =
+  '<RasterSymbolizer>' +
+  '<ColorMap type="ramp">' +
+  '<ColorMapEntry color="#440154" quantity="0"/>' +
+  '<ColorMapEntry color="#21918c" quantity="127.5"/>' +
+  '<ColorMapEntry color="#fde725" quantity="255"/>' +
+  '</ColorMap>' +
+  '</RasterSymbolizer>';
+```
+
+## CLI Usage
+
+```bash
+# Default mode (palette array)
+palettize create viridis --format gee --output viz.js --domain 0,255
+
+# SLD mode
+palettize create viridis -f gee -o viz.js --domain 0,255 -O type=sld
+
+# Custom number of colors
+palettize create viridis -f gee -o viz.js --domain 0,255 --steps 10
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("gee")
+
+# Default mode
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 10}
+)
+
+# SLD mode
+sld_output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"type": "sld", "num_colors": 256}
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors in palette |
+| `type` | `str` | `"default"` | Output type: `"default"` or `"sld"` |
+
+## Using in GEE Code Editor
+
+### Visualizing an Image
+
+```javascript
+// Paste the exported visualization parameters
+var palettize_viz = {
+  min: 0,
+  max: 255,
+  palette: ['440154', '482878', '3e4989', '31688e', '26828e', '1f9e89', '35b779', '6ece58', 'b5de2b', 'fde725']
+};
+
+// Load your image
+var image = ee.Image('USGS/SRTMGL1_003');
+
+// Display with the colormap
+Map.addLayer(image, palettize_viz, 'Elevation');
+```
+
+### Using SLD Style
+
+```javascript
+// Paste the exported SLD string
+var palettize_sld =
+  '<RasterSymbolizer>' +
+  '<ColorMap type="ramp">' +
+  '<ColorMapEntry color="#440154" quantity="0"/>' +
+  '<ColorMapEntry color="#21918c" quantity="127.5"/>' +
+  '<ColorMapEntry color="#fde725" quantity="255"/>' +
+  '</ColorMap>' +
+  '</RasterSymbolizer>';
+
+// Apply to image
+var styled = image.sldStyle(palettize_sld);
+Map.addLayer(styled, {}, 'Styled Elevation');
+```
+
+### Classified Data
+
+For categorical data, use exact color stops:
+
+```javascript
+var landcover_viz = {
+  min: 1,
+  max: 5,
+  palette: ['ff0000', '00ff00', '0000ff', 'ffff00', 'ff00ff']
+};
+
+var landcover = ee.Image('MODIS/006/MCD12Q1/2019_01_01')
+  .select('LC_Type1');
+Map.addLayer(landcover, landcover_viz, 'Land Cover');
+```
+
+## Color Format
+
+GEE expects hex colors without the `#` prefix:
+
+- Standard hex: `#440154`
+- GEE format: `440154`
+
+The exporter automatically strips the `#` prefix.
+
+## Tips
+
+### Choosing Number of Colors
+
+- For continuous data: Use 256 colors for smooth gradients
+- For display: 10-20 colors is often sufficient
+- For SLD mode: More colors = larger string, slower rendering
+
+### Combining with Band Math
+
+```javascript
+var ndvi = image.normalizedDifference(['B8', 'B4']);
+
+var ndvi_viz = {
+  min: -1,
+  max: 1,
+  palette: ['d73027', 'f46d43', 'fdae61', 'fee08b', 'd9ef8b', 'a6d96a', '66bd63', '1a9850']
+};
+
+Map.addLayer(ndvi, ndvi_viz, 'NDVI');
+```
+
+### Export for Multiple Datasets
+
+```javascript
+// Temperature colormap
+var temp_viz = {min: -20, max: 40, palette: ['053061', '4393c3', 'f7f7f7', 'd6604d', '67001f']};
+
+// Precipitation colormap
+var precip_viz = {min: 0, max: 500, palette: ['f7fcb9', 'addd8e', '41ab5d', '006837']};
+```

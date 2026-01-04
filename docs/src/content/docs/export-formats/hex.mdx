@@ -1,0 +1,141 @@
+---
+title: Hex Export Format
+description: Export colormaps as plaintext hex colors
+---
+
+The Hex exporter creates simple plaintext files with hex color values, one per line.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `hex` |
+| Extension | `.txt` |
+| Use case | General purpose, configuration files |
+
+## Output Format
+
+```
+#440154
+#482878
+#3e4989
+#31688e
+#26828e
+#1f9e89
+#35b779
+#6ece58
+#b5de2b
+#fde725
+```
+
+Each line contains a 6-character hex color with `#` prefix.
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format hex --output colors.txt
+
+# Specific number of colors
+palettize create viridis -f hex -o colors.txt --steps 10
+
+# Print to stdout
+palettize create viridis -f hex --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("hex")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={"num_colors": 10}
+)
+
+# Split into list
+colors = output.strip().split('\n')
+print(colors)  # ['#440154', '#482878', ...]
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+
+## Use Cases
+
+### Configuration Files
+
+Many applications accept color lists in configuration:
+
+```yaml
+# config.yaml
+colors:
+  - "#440154"
+  - "#482878"
+  - "#3e4989"
+```
+
+### CSS Custom Properties
+
+```css
+:root {
+  --color-1: #440154;
+  --color-2: #482878;
+  --color-3: #3e4989;
+}
+```
+
+### Color Picker Integration
+
+Import colors into design tools:
+
+1. Export: `palettize create viridis -f hex --steps 10`
+2. Copy output
+3. Paste into Figma, Sketch, or other design tools
+
+### Shell Scripts
+
+```bash
+# Generate colors and use in script
+colors=$(palettize create viridis -f hex --steps 5)
+
+# Process each color
+echo "$colors" | while read color; do
+    echo "Processing $color"
+done
+```
+
+### Python Lists
+
+```python
+# Quick way to get a color list
+output = exporter.export(cmap, scaler, 0, 1, {"num_colors": 5})
+colors = output.strip().split('\n')
+
+# Use with matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
+cmap = LinearSegmentedColormap.from_list("custom", colors)
+```
+
+## Comparing to RGBA Format
+
+| Feature | Hex | RGBA |
+|---------|-----|------|
+| Alpha support | No | Yes |
+| Format | `#RRGGBB` | `rgba(R, G, B, A)` |
+| CSS compatible | Yes | Yes |
+| File size | Smaller | Larger |
+
+Use Hex when you don't need alpha transparency. Use [RGBA](/palettize/export-formats/rgba/) when you need alpha values.

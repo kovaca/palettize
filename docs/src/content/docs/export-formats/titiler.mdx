@@ -1,0 +1,131 @@
+---
+title: TiTiler Export Format
+description: Export colormaps for TiTiler tile servers
+---
+
+The TiTiler exporter creates URL-encoded colormap parameters for use with TiTiler tile servers.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `titiler` |
+| Extension | `.txt` |
+| Use case | TiTiler COG tile servers |
+
+## Output Format
+
+The output is a URL-encoded JSON colormap parameter:
+
+```
+colormap=%7B%220%22%3A%22%23440154%22%2C%2223%22%3A%22%23482878%22%2C...%7D
+```
+
+When decoded, this is a JSON object mapping integer keys (0-255) to hex colors:
+
+```json
+{"0":"#440154","23":"#482878","46":"#3e4989",...,"255":"#fde725"}
+```
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format titiler --output colormap.txt
+
+# With custom number of steps
+palettize create viridis -f titiler -o colormap.txt --steps 11
+
+# Print to stdout for immediate use
+palettize create viridis -f titiler --steps 11
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("titiler")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 11}
+)
+
+print(output)  # colormap=%7B...%7D
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `11` | Number of color steps |
+
+## Using with TiTiler
+
+TiTiler accepts colormap parameters in tile requests:
+
+```
+https://titiler.example.com/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=my.tif&colormap=%7B...%7D
+```
+
+### Full Example
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+# Create colormap
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("titiler")
+
+# Export
+colormap_param = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={"num_colors": 256}
+)
+
+# Build TiTiler URL
+base_url = "https://titiler.example.com/cog/tiles/WebMercatorQuad"
+cog_url = "https://example.com/my-data.tif"
+tile_url = f"{base_url}/{{z}}/{{x}}/{{y}}.png?url={cog_url}&{colormap_param}"
+
+print(tile_url)
+```
+
+### With rescale Parameter
+
+TiTiler also supports a `rescale` parameter to map your data range:
+
+```
+&rescale=0,255&colormap=%7B...%7D
+```
+
+When using rescale, the colormap keys (0-255) map to your rescaled data range.
+
+## Colormap Key Mapping
+
+The exporter maps normalized colormap positions (0-1) to integer keys (0-255):
+
+- Position 0.0 → Key 0
+- Position 0.5 → Key 128
+- Position 1.0 → Key 255
+
+This matches TiTiler's expected colormap format where keys represent 8-bit pixel values.
+
+## Color Format
+
+Colors are output as 6-character hex strings without alpha:
+
+- Input RGBA: `(68, 1, 84, 255)`
+- Output hex: `#440154`
+
+Alpha channel is stripped as TiTiler colormaps don't support per-entry alpha.

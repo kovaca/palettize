@@ -1,0 +1,339 @@
+---
+title: Web Mapping
+description: Using Palettize with web mapping libraries
+---
+
+This guide demonstrates using Palettize to create colormaps for web mapping applications including TiTiler, MapLibre GL JS, and Observable Plot.
+
+## TiTiler Dynamic Tiling
+
+### Basic COG Visualization
+
+```bash
+# Generate TiTiler colormap parameter
+palettize create viridis --format titiler --steps 256
+```
+
+Use in a tile URL:
+
+```
+https://titiler.example.com/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=https://example.com/data.tif&rescale=0,255&colormap=%7B%220%22%3A%22%23440154%22...%7D
+```
+
+### Python Integration
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import httpx
+
+# Create colormap
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("titiler")
+
+colormap_param = exporter.export(cmap, scaler, 0, 255, {"num_colors": 256})
+
+# Build tile URL
+cog_url = "https://example.com/elevation.tif"
+base_url = "https://titiler.example.com/cog/tiles/WebMercatorQuad"
+tile_template = f"{base_url}/{{z}}/{{x}}/{{y}}.png?url={cog_url}&rescale=0,4000&{colormap_param}"
+
+print(tile_template)
+```
+
+### Leaflet with TiTiler
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="map" style="height: 100vh;"></div>
+  <script>
+    const map = L.map('map').setView([40, -100], 4);
+
+    // Base layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // TiTiler layer with Palettize colormap
+    const cogUrl = 'https://example.com/elevation.tif';
+    const colormap = '%7B%220%22%3A%22%23440154%22...%7D';  // From palettize
+
+    L.tileLayer(
+      `https://titiler.example.com/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=${cogUrl}&rescale=0,4000&colormap=${colormap}`,
+      { opacity: 0.7 }
+    ).addTo(map);
+  </script>
+</body>
+</html>
+```
+
+## MapLibre GL JS
+
+### Vector Tile Styling
+
+```bash
+# Generate MapLibre expression
+palettize create viridis --format mapgl --output style.json \
+  --domain 0,100 --steps 11 -O property_name=value
+```
+
+### Full Example
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="map" style="height: 100vh;"></div>
+  <script>
+    // Color expression from Palettize
+    const colorExpression = ["interpolate", ["linear"], ["get", "temperature"],
+      -20, "#053061",
+      -10, "#2166ac",
+      0, "#f7f7f7",
+      10, "#b2182b",
+      20, "#67001f"
+    ];
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://demotiles.maplibre.org/style.json',
+      center: [-100, 40],
+      zoom: 4
+    });
+
+    map.on('load', () => {
+      map.addSource('weather', {
+        type: 'vector',
+        url: 'https://example.com/weather.json'
+      });
+
+      map.addLayer({
+        id: 'temperature',
+        type: 'fill',
+        source: 'weather',
+        'source-layer': 'data',
+        paint: {
+          'fill-color': colorExpression,
+          'fill-opacity': 0.8
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+```
+
+### Choropleth Map
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import json
+
+# Create diverging colormap for population change
+cmap = create_colormap(colors=["#b2182b", "#f7f7f7", "#2166ac"])
+scaler = get_scaler_by_name("linear", domain_min=-50, domain_max=50)
+exporter = get_exporter("mapgl")
+
+expression = exporter.export(
+    cmap, scaler, -50, 50,
+    {"num_colors": 11, "property_name": "pop_change"}
+)
+
+# Use in MapLibre style
+style_layer = {
+    "id": "choropleth",
+    "type": "fill",
+    "source": "counties",
+    "paint": {
+        "fill-color": json.loads(expression),
+        "fill-outline-color": "#000000"
+    }
+}
+```
+
+## Observable Plot
+
+### Basic Heatmap
+
+```bash
+# Generate Observable scale
+palettize create viridis --format observable --output scale.json \
+  --domain 0,100 --steps 10
+```
+
+### Observable Notebook
+
+```javascript
+// Import the scale definition
+const scaleConfig = {
+  "type": "linear",
+  "domain": [0, 100],
+  "range": ["#440154", "#482878", "#3e4989", "#31688e", "#26828e",
+            "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"]
+};
+
+// Use with Plot
+Plot.plot({
+  color: {
+    type: scaleConfig.type,
+    domain: scaleConfig.domain,
+    range: scaleConfig.range
+  },
+  marks: [
+    Plot.cell(data, {x: "x", y: "y", fill: "value"})
+  ]
+})
+```
+
+### Diverging Scale
+
+```bash
+palettize create RdBu --format observable --output diverging.json \
+  --domain -10,10 -O type=diverging -O pivot=0
+```
+
+```javascript
+// Diverging temperature anomaly
+Plot.plot({
+  color: {
+    type: "diverging",
+    domain: [-10, 10],
+    range: ["#053061", "#2166ac", "#4393c3", "#92c5de", "#d1e5f0",
+            "#f7f7f7", "#fddbc7", "#f4a582", "#d6604d", "#b2182b", "#67001f"],
+    pivot: 0
+  },
+  marks: [
+    Plot.dot(anomalies, {x: "lon", y: "lat", fill: "temp_anomaly"})
+  ]
+})
+```
+
+## Google Earth Engine
+
+### Satellite Imagery
+
+```bash
+# Generate GEE visualization
+palettize create viridis --format gee --output viz.js \
+  --domain 0,3000 --steps 10
+```
+
+```javascript
+// In GEE Code Editor
+var palettize_viz = {
+  min: 0,
+  max: 3000,
+  palette: ['440154', '482878', '3e4989', '31688e', '26828e',
+            '1f9e89', '35b779', '6ece58', 'b5de2b', 'fde725']
+};
+
+var dem = ee.Image('USGS/SRTMGL1_003');
+Map.addLayer(dem, palettize_viz, 'Elevation');
+```
+
+### NDVI Time Series
+
+```bash
+# Green vegetation palette
+palettize create --colors "#8B4513,#FFD700,#228B22,#006400" \
+  --format gee --output ndvi_viz.js --domain -0.2,0.8
+```
+
+```javascript
+var ndvi_viz = {
+  min: -0.2,
+  max: 0.8,
+  palette: ['8B4513', 'FFD700', '228B22', '006400']
+};
+
+var ndvi = sentinel2.normalizedDifference(['B8', 'B4']);
+Map.addLayer(ndvi, ndvi_viz, 'NDVI');
+```
+
+## Complete Web App Example
+
+### Flask + TiTiler + Leaflet
+
+```python
+# app.py
+from flask import Flask, render_template
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    # Generate colormap
+    cmap = create_colormap(preset="viridis")
+    scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+    exporter = get_exporter("titiler")
+
+    colormap_param = exporter.export(cmap, scaler, 0, 255, {"num_colors": 256})
+
+    return render_template('map.html', colormap=colormap_param)
+```
+
+```html
+<!-- templates/map.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="map" style="height: 100vh;"></div>
+  <script>
+    const map = L.map('map').setView([40, -100], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const cogUrl = 'https://example.com/data.tif';
+    const colormap = '{{ colormap | safe }}';
+
+    L.tileLayer(
+      `https://titiler.example.com/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=${cogUrl}&${colormap}`,
+      { opacity: 0.7 }
+    ).addTo(map);
+  </script>
+</body>
+</html>
+```
+
+## Tips for Web Mapping
+
+### Performance
+
+- Use fewer color steps (10-20) for faster rendering
+- Pre-generate colormaps; don't compute per request
+- Cache colormap parameters
+
+### Color Accessibility
+
+```bash
+# Use colorblind-safe presets
+palettize create viridis ...   # Good
+palettize create cividis ...   # Better for colorblindness
+```
+
+### Responsive Legends
+
+Generate discrete stops for legend display:
+
+```python
+# Get legend colors
+cmap = create_colormap(preset="viridis")
+legend_colors = []
+for i in range(5):
+    pos = i / 4
+    val = domain_min + pos * (domain_max - domain_min)
+    color = cmap.get_color(pos)
+    legend_colors.append({"value": val, "color": color})
+```

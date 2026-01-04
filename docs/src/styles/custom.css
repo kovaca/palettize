@@ -1,0 +1,19 @@
+/* Custom styles for Palettize documentation */
+
+:root {
+  /* Green accent to match colormap/nature theme */
+  --sl-color-accent-low: #d4edda;
+  --sl-color-accent: #28a745;
+  --sl-color-accent-high: #155724;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #155724;
+  --sl-color-accent: #28a745;
+  --sl-color-accent-high: #d4edda;
+}
+
+/* Code block styling */
+.expressive-code pre {
+  border-radius: 0.5rem;
+}

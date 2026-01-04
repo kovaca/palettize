@@ -1,0 +1,68 @@
+---
+title: CLI Overview
+description: Command-line interface reference for Palettize
+---
+
+Palettize provides a command-line interface for generating, previewing, and exporting colormaps.
+
+## Basic Usage
+
+```bash
+palettize [OPTIONS] COMMAND [ARGS]
+```
+
+## Global Options
+
+These options are available for all commands:
+
+| Option | Description |
+|--------|-------------|
+| `--version`, `-V` | Show the application version and exit |
+| `--verbose`, `-v` | Increase output verbosity. Use `-vv` for more detail |
+| `--help` | Show help message and exit |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| [`show`](/palettize/cli/show/) | Render a colormap preview in the terminal |
+| [`create`](/palettize/cli/create/) | Export a colormap to one or more file formats |
+| [`list presets`](/palettize/cli/list/) | List all available preset palettes |
+| [`list exporters`](/palettize/cli/list/) | List all available export formats |
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Usage error (invalid arguments) |
+| `2` | Invalid color |
+| `3` | Export error |
+| `4` | Resource not found (preset or exporter) |
+| `5` | Unexpected error |
+
+## Color Input Formats
+
+When specifying colors via `--colors`, you can use:
+
+- **Named colors**: `red`, `blue`, `midnightblue`, `gold`
+- **Hex colors**: `#ff0000`, `#0000ff`
+- **Comma-separated lists**: `--colors "red,white,blue"` or `--colors red --colors white --colors blue`
+
+Colors are parsed via the [ColorAide](https://github.com/facelessuser/coloraide) library, which supports many formats.
+
+## Examples
+
+```bash
+# Show help
+palettize --help
+
+# Show version
+palettize --version
+
+# Run with verbose output
+palettize -v show viridis
+
+# Run with extra verbose output (includes tracebacks on error)
+palettize -vv create viridis -f gdal -o output.txt
+```

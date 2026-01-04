@@ -1,0 +1,213 @@
+---
+title: Data Scaling
+description: Mapping data values to colormap positions
+---
+
+Data scaling transforms values from your data domain to colormap positions (0-1). Choosing the right scaling function helps reveal patterns in your data.
+
+## Why Scale Data?
+
+Colormaps map positions from 0 to 1 to colors. Your data might range from -100 to 100, or 1 to 1,000,000. Scaling bridges this gap:
+
+```
+Data Value → Scaler → Position (0-1) → Colormap → Color
+```
+
+## Available Scaling Types
+
+### Linear (Default)
+
+Direct proportional mapping. Best for uniformly distributed data.
+
+```bash
+palettize create viridis -f gdal -o output.txt --domain 0,100 --scale linear
+```
+
+**Math:** `position = (value - min) / (max - min)`
+
+**Use when:**
+- Data is evenly distributed
+- Equal numeric differences should have equal visual differences
+- No specific patterns need emphasis
+
+### Square Root
+
+Emphasizes lower values by compressing the upper range.
+
+```bash
+palettize create viridis -f gdal -o output.txt --domain 0,100 --scale sqrt
+```
+
+**Math:** `position = sqrt((value - min) / (max - min))`
+
+**Use when:**
+- You have count data
+- Lower values are more important
+- Data has a right-skewed distribution
+
+### Power
+
+Raises normalized values to a power. The exponent controls emphasis.
+
+```bash
+# Exponent > 1: Emphasize high values
+palettize create viridis -f gdal -o output.txt --domain 0,100 \
+  --scale power --scale-exponent 2
+
+# Exponent < 1: Emphasize low values (similar to sqrt)
+palettize create viridis -f gdal -o output.txt --domain 0,100 \
+  --scale power --scale-exponent 0.5
+```
+
+**Math:** `position = ((value - min) / (max - min)) ^ exponent`
+
+**Use when:**
+- You need fine control over emphasis
+- Standard sqrt isn't quite right
+- Creating artistic effects
+
+### Logarithmic
+
+Maps data on a log scale. Domain must be positive.
+
+```bash
+palettize create viridis -f gdal -o output.txt --domain 1,1000 --scale log
+
+# Custom base
+palettize create viridis -f gdal -o output.txt --domain 1,1024 \
+  --scale log --scale-log-base 2
+```
+
+**Math:** `position = log(value) / log(max)` (normalized)
+
+**Use when:**
+- Data spans multiple orders of magnitude
+- You're visualizing exponential phenomena
+- Values like 10, 100, 1000 should be equally spaced visually
+
+### Symmetric Log (Symlog)
+
+Handles data that spans zero with wide dynamic range. Linear near zero, logarithmic away from zero.
+
+```bash
+palettize create --colors "blue,white,red" -f gdal -o output.txt \
+  --domain -100,100 --scale symlog --scale-symlog-linthresh 1
+```
+
+**Parameters:**
+- `--scale-symlog-linthresh`: Threshold for linear region (required)
+- `--scale-log-base`: Log base (default: 10)
+
+**Use when:**
+- Data includes zero and negative values
+- Both small and large magnitudes matter
+- Creating diverging visualizations
+
+## Choosing the Right Scale
+
+| Data Characteristic | Recommended Scale |
+|---------------------|-------------------|
+| Uniform distribution | Linear |
+| Right-skewed (many small, few large) | Sqrt or Log |
+| Spans orders of magnitude | Log |
+| Includes zero, wide range | Symlog |
+| Need to emphasize extremes | Power (exponent > 1) |
+| Need to compress extremes | Power (exponent < 1) |
+
+## Visual Examples
+
+### Population Density
+
+Population data is often highly skewed:
+
+```bash
+# Linear: Cities dominate, suburbs invisible
+palettize create viridis -f gdal -o pop_linear.txt \
+  --domain 0,50000 --scale linear
+
+# Log: Better visibility of suburbs
+palettize create viridis -f gdal -o pop_log.txt \
+  --domain 1,50000 --scale log
+
+# Sqrt: Compromise
+palettize create viridis -f gdal -o pop_sqrt.txt \
+  --domain 0,50000 --scale sqrt
+```
+
+### Temperature Anomalies
+
+Data centered around zero:
+
+```bash
+# Symlog for temperature anomalies
+palettize create --colors "blue,white,red" -f gdal -o temp.txt \
+  --domain -10,10 --scale symlog --scale-symlog-linthresh 0.5
+```
+
+### Elevation
+
+Terrain data with meaningful zero:
+
+```bash
+# Linear for elevation (sea level = 0 is meaningful)
+palettize create --colors "green,yellow,brown,white" -f gdal -o elev.txt \
+  --domain 0,4000 --scale linear
+```
+
+## Python Usage
+
+```python
+from palettize import (
+    create_colormap,
+    get_scaler_by_name,
+    get_linear_scaler,
+    get_log_scaler,
+    get_symlog_scaler
+)
+
+cmap = create_colormap(preset="viridis")
+
+# Different scalers
+linear = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+log = get_scaler_by_name("log", domain_min=1, domain_max=1000)
+symlog = get_scaler_by_name("symlog", domain_min=-100, domain_max=100, linthresh=1)
+power = get_scaler_by_name("power", domain_min=0, domain_max=100, exponent=2)
+
+# Apply to colormap
+color_linear = cmap.apply_scaler(50, linear)
+color_log = cmap.apply_scaler(100, log)
+color_symlog = cmap.apply_scaler(-50, symlog)
+```
+
+## Clamping Behavior
+
+By default, scalers clamp output to [0, 1]:
+
+```python
+scaler = get_linear_scaler(domain_min=0, domain_max=100, clamp=True)
+
+scaler(50)   # 0.5
+scaler(150)  # 1.0 (clamped)
+scaler(-50)  # 0.0 (clamped)
+```
+
+Disable clamping for extrapolation:
+
+```python
+scaler = get_linear_scaler(domain_min=0, domain_max=100, clamp=False)
+
+scaler(150)  # 1.5 (extrapolated)
+scaler(-50)  # -0.5 (extrapolated)
+```
+
+## Combining Scale with Cut
+
+Use `--cut` to use a portion of the colormap with scaling:
+
+```bash
+# Use middle 80% of viridis with log scaling
+palettize create viridis -f gdal -o output.txt \
+  --domain 1,1000 --scale log --cut "0.1,0.9"
+```
+
+This is useful when the extreme colors of a colormap are too dark or light for your visualization.

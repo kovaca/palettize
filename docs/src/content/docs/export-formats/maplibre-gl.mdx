@@ -1,0 +1,174 @@
+---
+title: MapLibre GL JS Export Format
+description: Export colormaps for MapLibre GL JS web maps
+---
+
+The MapLibre GL exporter creates JavaScript expressions for use with MapLibre GL JS (and Mapbox GL JS) web mapping libraries.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `mapgl` |
+| Extension | `.json` |
+| Use case | MapLibre GL JS, Mapbox GL JS |
+
+## Output Format
+
+The output is a JSON interpolate expression:
+
+```json
+["interpolate", ["linear"], ["get", "value"], 0, "#440154", 28.33, "#482878", 56.67, "#3e4989", 85, "#31688e", 113.33, "#26828e", 141.67, "#1f9e89", 170, "#35b779", 198.33, "#6ece58", 226.67, "#b5de2b", 255, "#fde725"]
+```
+
+This expression:
+1. Uses linear interpolation
+2. Gets the `"value"` property from features
+3. Maps data values to hex colors
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format mapgl --output viridis.json --domain 0,255
+
+# Custom property name
+palettize create viridis -f mapgl -o style.json --domain 0,100 \
+  -O property_name=elevation
+
+# Fewer color steps
+palettize create viridis -f mapgl -o style.json --domain 0,255 --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import json
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("mapgl")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={
+        "num_colors": 11,
+        "property_name": "elevation"
+    }
+)
+
+# Parse JSON to use in MapLibre style
+expression = json.loads(output)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `11` | Number of color steps |
+| `precision` | `int` | | Decimal places for numeric values |
+| `property_name` | `str` | `"value"` | Feature property to map |
+
+## Using with MapLibre GL JS
+
+### Fill Color
+
+```javascript
+import { createColormap, getScalerByName, getExporter } from 'palettize';
+
+// Or load the exported JSON
+const colorExpression = ["interpolate", ["linear"], ["get", "value"],
+    0, "#440154", 128, "#21918c", 255, "#fde725"];
+
+map.addLayer({
+    id: 'data-layer',
+    type: 'fill',
+    source: 'my-source',
+    paint: {
+        'fill-color': colorExpression,
+        'fill-opacity': 0.8
+    }
+});
+```
+
+### Line Color
+
+```javascript
+map.addLayer({
+    id: 'line-layer',
+    type: 'line',
+    source: 'my-source',
+    paint: {
+        'line-color': colorExpression,
+        'line-width': 2
+    }
+});
+```
+
+### Circle Color
+
+```javascript
+map.addLayer({
+    id: 'circle-layer',
+    type: 'circle',
+    source: 'my-source',
+    paint: {
+        'circle-color': colorExpression,
+        'circle-radius': 5
+    }
+});
+```
+
+### Raster DEM Hillshade
+
+For terrain visualization, you might combine with hillshade:
+
+```javascript
+map.addLayer({
+    id: 'hillshade',
+    type: 'hillshade',
+    source: 'dem-source'
+});
+
+map.addLayer({
+    id: 'elevation-color',
+    type: 'fill',
+    source: 'elevation-polygons',
+    paint: {
+        'fill-color': colorExpression
+    }
+});
+```
+
+## Custom Property Names
+
+If your data uses a different property name:
+
+```bash
+# Map the "temp" property
+palettize create RdBu -f mapgl -o temp.json --domain -20,40 \
+  -O property_name=temp
+```
+
+Output:
+```json
+["interpolate", ["linear"], ["get", "temp"], -20, "#053061", ..., 40, "#67001f"]
+```
+
+## Precision Control
+
+Control decimal places in output values:
+
+```bash
+palettize create viridis -f mapgl -o style.json --domain 0,1 \
+  --steps 5 -O precision=2
+```
+
+Output:
+```json
+["interpolate", ["linear"], ["get", "value"], 0, "#440154", 0.25, "#482878", 0.5, "#21918c", 0.75, "#5ec962", 1, "#fde725"]
+```

@@ -1,0 +1,122 @@
+---
+title: QGIS Export Format
+description: Export colormaps for QGIS
+---
+
+The QGIS exporter creates XML color ramp files that can be imported into QGIS for styling raster and vector layers.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `qgis` |
+| Extension | `.xml` |
+| Use case | QGIS desktop GIS styling |
+
+## Output Format
+
+```xml
+<?xml version='1.0' encoding='utf-8'?>
+<colorramps>
+  <colorramp name="viridis" type="gradient">
+    <item alpha="255" color="#440154" position="0.0000"/>
+    <item alpha="255" color="#482878" position="0.1111"/>
+    ...
+    <item alpha="255" color="#fde725" position="1.0000"/>
+  </colorramp>
+</colorramps>
+```
+
+## CLI Usage
+
+```bash
+# Basic export
+palettize create viridis --format qgis --output viridis.xml --domain 0,255
+
+# Gradient ramp with custom steps
+palettize create viridis -f qgis -o viridis.xml --steps 11
+
+# Exact (discrete) ramp
+palettize create viridis -f qgis -o viridis.xml -O ramp_type=exact
+
+# With tags
+palettize create viridis -f qgis -o viridis.xml -O "tags=scientific;perceptual"
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=255)
+exporter = get_exporter("qgis")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=255,
+    options={
+        "num_colors": 11,
+        "ramp_type": "gradient",
+        "name": "Viridis",
+        "tags": ["scientific", "perceptual"]
+    }
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of color steps for gradient ramps |
+| `ramp_type` | `str` | `"gradient"` | Ramp type: `"gradient"`, `"exact"`, `"approximate"` |
+| `name` | `str` | | Name for the color ramp |
+| `tags` | `list[str]` | | Tags for organizing ramps |
+| `discrete` | `bool` | `False` | Whether stops are discrete (for exact/approximate) |
+| `color_space` | `str` | | QGIS color space hint |
+| `opacity` | `float` | `1.0` | Overall opacity (0.0-1.0) |
+
+## Ramp Types
+
+### Gradient (Default)
+
+Continuous interpolation between colors. Best for continuous data.
+
+```bash
+palettize create viridis -f qgis -o viridis.xml -O ramp_type=gradient
+```
+
+### Exact
+
+Uses original colormap stops. Best for categorical or classified data.
+
+```bash
+palettize create viridis -f qgis -o viridis.xml -O ramp_type=exact
+```
+
+### Approximate
+
+Similar to exact but allows interpolation hints.
+
+```bash
+palettize create viridis -f qgis -o viridis.xml -O ramp_type=approximate
+```
+
+## Importing into QGIS
+
+1. In QGIS, go to **Settings > Style Manager**
+2. Click **Import/Export > Import Item(s)**
+3. Select your exported `.xml` file
+4. The color ramp will appear in your style library
+
+Alternatively, copy the XML content directly into a `.qml` style file or use it in symbology settings.
+
+## Applying to Raster Layers
+
+1. Right-click your raster layer > **Properties**
+2. Go to **Symbology** tab
+3. Select **Singleband pseudocolor**
+4. Choose your imported color ramp from the dropdown
+5. Set min/max values to match your data domain
