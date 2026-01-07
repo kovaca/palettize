@@ -2,23 +2,26 @@
 
 """Command-Line Interface for Palettize, built with Typer."""
 
-from typing import Optional, List, Tuple, Dict, Any
+import random
+import traceback
+from pathlib import Path
+from typing import Any
+
 import typer
 from rich.console import Console
-from rich.table import Table
-from palettize.exporters import list_available_exporters, get_exporter
-from palettize.presets import list_available_presets
-from palettize.core import Colormap
-from palettize.exceptions import PresetNotFoundError, InvalidColorError
-from palettize.scaling import get_scaler_by_name
-from palettize import __version__
-import traceback
 from rich.panel import Panel
-from pathlib import Path
+from rich.table import Table
+
+from palettize import __version__
+from palettize.core import Colormap
+from palettize.exceptions import InvalidColorError, PresetNotFoundError
+from palettize.exporters import get_exporter, list_available_exporters
+from palettize.presets import list_available_presets
+from palettize.scaling import get_scaler_by_name
 
 
 # --- Helper function to parse comma-separated min,max string ---
-def parse_min_max_str(value_str: str, param_name: str) -> Tuple[float, float]:
+def parse_min_max_str(value_str: str, param_name: str) -> tuple[float, float]:
     """Parses a string like 'min,max' into a tuple of two floats."""
     try:
         min_val_str, max_val_str = value_str.split(",")
@@ -53,6 +56,113 @@ class AppState:
 
 app_state = AppState()
 
+# --- ASCII Art and Color Quotes for 'info' command ---
+
+# Full ASCII art using block characters for wide terminals (>= 60 chars)
+ASCII_ART_FULL = """
+███████╗  █████╗ ██╗     ███████╗████████╗████████╗██╗███████╗███████╗
+ ██╔══██╗██╔══██╗██║     ██╔════╝╚══██╔══╝╚══██╔══╝██║╚══███╔╝██╔════╝
+ ██████╔╝███████║██║     █████╗     ██║      ██║   ██║  ███╔╝ █████╗
+ ██╔═══╝ ██╔══██║██║     ██╔══╝     ██║      ██║   ██║ ███╔╝  ██╔══╝
+ ██║     ██║  ██║███████╗███████╗   ██║      ██║   ██║███████╗███████╗
+ ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝   ╚═╝╚══════╝╚══════╝
+"""
+
+# Compact ASCII art for narrow terminals (< 60 chars)
+ASCII_ART_COMPACT = """
+▄▀▀▄ ▄▀▀▄ █   ▄▀▀ ▀▀█▀▀ ▀▀█▀▀ █ ▀▀█ ▄▀▀
+█▀▀  █▀▀█ █   █▀▀   █     █   █  ▄▀ █▀▀
+█    █  █ █▄▄ █▄▄   █     █   █ █▄▄ █▄▄
+"""
+
+COLOR_QUOTES = [
+    '"Color is a power which directly influences the soul." — Wassily Kandinsky',
+    '"The purest and most thoughtful minds are those which love color the most." — John Ruskin',
+    '"Color is the keyboard, the eyes are the harmonies, the soul is the piano." — Wassily Kandinsky',
+    '"I found I could say things with color and shapes that I couldn\'t say any other way." — Georgia O\'Keeffe',
+    '"Color does not add a pleasant quality to design — it reinforces it." — Pierre Bonnard',
+    '"Mere color, unspoiled by meaning, can speak to the soul in a thousand ways." — Oscar Wilde',
+    '"Colors are the smiles of nature." — Leigh Hunt',
+    '"The whole world, as we experience it visually, comes to us through the mystic realm of color." — Hans Hofmann',
+    '"Color is my daylong obsession, joy, and torment." — Claude Monet',
+    '"Why do two colors, put one next to the other, sing?" — Pablo Picasso',
+    '"There is no blue without yellow and without orange." — Vincent van Gogh',
+    '"In nature, light creates the color. In the picture, color creates the light." — Hans Hofmann',
+    '"What we see is filtered sensory information; perception is shaped by our expectations." — Norwood Russell Hanson',
+    '"By convention there is color... but in reality there are atoms and the void." — Edward Robert Harrison',
+    '"Life is about using the whole box of crayons." — RuPaul',
+    '"Color! What a deep and mysterious language, the language of dreams." — Paul Gauguin'
+]
+
+# Colormaps to randomly select from for the banner
+BANNER_COLORMAPS = ["turbo", "viridis", "magma", "inferno", "plasma", "cividis", "mako", "rocket"]
+
+
+def _apply_colormap_gradient_by_column(text: str, colormap: Colormap) -> str:
+    """Apply a colormap gradient to text by column position for consistent vertical coloring."""
+    lines = text.split("\n")
+    if not lines:
+        return text
+
+    # Find the maximum line length to determine gradient spread
+    max_len = max(len(line) for line in lines)
+    if max_len == 0:
+        return text
+
+    result_lines = []
+    for line in lines:
+        result_chars = []
+        for col, char in enumerate(line):
+            if char == " ":
+                result_chars.append(" ")
+            else:
+                # Get color from colormap based on column position (0-1)
+                position = col / max_len
+                hex_color = colormap.get_color(position)
+                result_chars.append(f"[{hex_color}]{char}[/]")
+        result_lines.append("".join(result_chars))
+
+    return "\n".join(result_lines)
+
+
+def _render_info_banner(console: Console) -> None:
+    """Render the palettize info banner with gradient and information."""
+    width = console.width or 80
+
+    # Select ASCII art based on terminal width
+    ascii_art = ASCII_ART_FULL if width >= 72 else ASCII_ART_COMPACT
+
+    # Select a random colormap for the banner
+    colormap_name = random.choice(BANNER_COLORMAPS)
+    colormap = Colormap.from_preset(colormap_name)
+
+    # Apply colormap gradient to the ASCII art (by column for vertical consistency)
+    gradient_art = _apply_colormap_gradient_by_column(ascii_art.strip(), colormap)
+    console.print(gradient_art)
+    console.print()
+
+    # Display information
+    console.print(f"[bold]Version:[/bold] {__version__}")
+    console.print(
+        "[bold]Description:[/bold] A Python CLI tool for creating and exporting "
+        "colormaps for data visualization and mapping applications."
+    )
+    console.print()
+    console.print(
+        "[bold]GitHub:[/bold] [link=https://github.com/kovaca/palettize]"
+        "https://github.com/kovaca/palettize[/link]"
+    )
+    console.print(
+        "[bold]Docs:[/bold] [link=https://kovaca.github.io/palettize]"
+        "https://kovaca.github.io/palettize[/link]"
+    )
+    console.print()
+
+    # Display random quote
+    quote = random.choice(COLOR_QUOTES)
+    console.print(f"[dim italic]{quote}[/dim italic]")
+
+
 app = typer.Typer(
     name="palettize",
     help="🎨 A Python utility and CLI tool for generating, previewing, and exporting color maps.",
@@ -75,13 +185,13 @@ def verbosity_callback(ctx: typer.Context, param: typer.CallbackParam, value: in
     return value
 
 
- 
+
 
 
 @app.callback()
 def global_options(
     ctx: typer.Context,
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-V",
@@ -89,7 +199,7 @@ def global_options(
         is_eager=True,
         help="Show the application's version and exit.",
     ),
-    verbose: Optional[int] = typer.Option(
+    verbose: int | None = typer.Option(
         0,
         "--verbose",
         "-v",
@@ -110,11 +220,11 @@ def global_options(
 
 
 def _create_colormap_from_options(
-    preset: Optional[str],
-    colors: Optional[List[str]],
+    preset: str | None,
+    colors: list[str] | None,
     cut: str,
     interpolation_space: str,
-    name: Optional[str],
+    name: str | None,
 ) -> Colormap:
     """Helper to create a Colormap object from common CLI options."""
     if colors and preset:
@@ -139,7 +249,7 @@ def _create_colormap_from_options(
         console.print(f"[bold red]Error:[/bold red] {e.message}", style="bold red")
         raise typer.Exit(code=ExitCodes.USAGE_ERROR)
 
-    actual_colors_list: Optional[List[str]] = None
+    actual_colors_list: list[str] | None = None
     if colors:
         actual_colors_list = []
         for color_item in colors:
@@ -202,9 +312,9 @@ def _create_colormap_from_options(
         raise typer.Exit(code=ExitCodes.UNEXPECTED_ERROR)
 
 
-def _parse_exporter_options(options: List[str]) -> Dict[str, Any]:
+def _parse_exporter_options(options: list[str]) -> dict[str, Any]:
     """Parses repeatable -O/--option flags into a dictionary."""
-    parsed_options: Dict[str, Any] = {"_global": {}}
+    parsed_options: dict[str, Any] = {"_global": {}}
     for option_str in options:
         if "=" not in option_str:
             console.print(
@@ -228,7 +338,7 @@ def _parse_exporter_options(options: List[str]) -> Dict[str, Any]:
 
 # --- Helper function for terminal rendering ---
 def _render_colormap_to_terminal(
-    console: Console, colormap_obj: Colormap, width: Optional[int], height: int
+    console: Console, colormap_obj: Colormap, width: int | None, height: int
 ):
     """Renders the given Colormap object to the terminal."""
     console_width = console.width if console.width is not None else 80
@@ -278,21 +388,30 @@ def list_presets_command():
     console.print(table)
 
 
+# --- 'info' command ---
+
+
+@app.command()
+def info():
+    """Display information about Palettize with a colorful banner."""
+    _render_info_banner(console)
+
+
 # --- Top-level commands ---
 
 
 @app.command()
 def show(
-    preset_name: Optional[str] = typer.Argument(
+    preset_name: str | None = typer.Argument(
         None, help="Name of a preset palette (e.g., 'viridis')."
     ),
-    colors: Optional[List[str]] = typer.Option(
+    colors: list[str] | None = typer.Option(
         None,
         "--colors",
         "-c",
         help="List of input colors (e.g., 'red,blue', '#ff0000'). Use multiple times or comma-separate.",
     ),
-    width: Optional[int] = typer.Option(
+    width: int | None = typer.Option(
         None,
         "--width",
         "-w",
@@ -307,7 +426,7 @@ def show(
     cut: str = typer.Option(
         "0,1", "--cut", help="Sub-segment of the colormap to use, e.g., '0.2,0.8'."
     ),
-    name: Optional[str] = typer.Option(
+    name: str | None = typer.Option(
         None, "--name", help="Set a display name for the colormap."
     ),
 ):
@@ -324,19 +443,19 @@ def show(
 
 @app.command()
 def create(
-    preset_name: Optional[str] = typer.Argument(
+    preset_name: str | None = typer.Argument(
         None, help="Name of a preset palette to export (e.g., 'viridis')."
     ),
-    colors: Optional[List[str]] = typer.Option(
+    colors: list[str] | None = typer.Option(
         None, "--colors", "-c", help="List of input colors to create a colormap from."
     ),
-    formats: List[str] = typer.Option(
+    formats: list[str] = typer.Option(
         ...,
         "--format",
         "-f",
         help="One or more export format identifiers (e.g., 'gdal,qgis').",
     ),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -348,23 +467,23 @@ def create(
     scale: str = typer.Option(
         "linear", "--scale", help="Scaling type: linear, power, sqrt, log, symlog."
     ),
-    scale_exponent: Optional[float] = typer.Option(
+    scale_exponent: float | None = typer.Option(
         None, "--scale-exponent", help="Exponent for 'power' scale."
     ),
-    scale_log_base: Optional[float] = typer.Option(
+    scale_log_base: float | None = typer.Option(
         None, "--scale-log-base", help="Log base for 'log'/'symlog' scales."
     ),
-    scale_symlog_linthresh: Optional[float] = typer.Option(
+    scale_symlog_linthresh: float | None = typer.Option(
         None, "--scale-symlog-linthresh", help="Linear threshold for 'symlog' scale."
     ),
-    steps: Optional[int] = typer.Option(
+    steps: int | None = typer.Option(
         7,
         "--steps",
         "-n",
         min=2,
         help="Number of discrete color steps for ramp outputs.",
     ),
-    precision: Optional[int] = typer.Option(
+    precision: int | None = typer.Option(
         None, "--precision", min=0, help="Decimal places for numeric values in output."
     ),
     interpolation_space: str = typer.Option(
@@ -373,10 +492,10 @@ def create(
     cut: str = typer.Option(
         "0,1", "--cut", help="Sub-segment of the colormap to use, e.g., '0.2,0.8'."
     ),
-    name: Optional[str] = typer.Option(
+    name: str | None = typer.Option(
         None, "--name", help="Name for the colormap, used in file naming and output."
     ),
-    option: Optional[List[str]] = typer.Option(
+    option: list[str] | None = typer.Option(
         None,
         "--option",
         "-O",
@@ -482,6 +601,7 @@ def create(
             final_options["precision"] = precision
         final_options["name"] = base_colormap_name
         final_options["scale_type"] = scale
+        final_options["verbose"] = app_state.verbose_level > 0
 
         try:
             output_str = exporter.export(

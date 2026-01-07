@@ -283,9 +283,9 @@ def _export_sld_impl(
             # For now, let it proceed; it will produce a ColorMap with no entries.
             pass
 
-        sorted_stops = sorted(colormap.stops, key=lambda s: s.pos)
+        sorted_stops = sorted(colormap.stops, key=lambda s: s.position)
         for i, stop in enumerate(sorted_stops):
-            data_val = domain_min + stop.pos * (domain_max - domain_min)
+            data_val = domain_min + stop.position * (domain_max - domain_min)
 
             # Get color directly from stop (sRGB for output)
             # Using stop._parsed_color_obj as per convention in other exporters
@@ -296,7 +296,7 @@ def _export_sld_impl(
                 import warnings
 
                 warnings.warn(
-                    f"ColorStop at pos {stop.pos} has no valid _parsed_color_obj. Using black.",
+                    f"ColorStop at position {stop.position} has no valid _parsed_color_obj. Using black.",
                     RuntimeWarning,
                 )
                 srgb_color = ColorStop(0, "black")._parsed_color_obj.convert(
@@ -354,68 +354,3 @@ def _export_sld_impl(
         pass  # Fallback for older Python versions
 
     return ET.tostring(sld_root, encoding="unicode", xml_declaration=True)
-
-
-# Example Usage:
-if __name__ == "__main__":
-    from palettize.core import Colormap, ColorStop
-    from palettize.scaling import get_linear_scaler
-
-    # Test colormap
-    stops = [
-        ColorStop("red", 0.0),
-        ColorStop("yellow", 0.5),
-        ColorStop((0, 255, 0, 128), 1.0),  # Green with alpha
-    ]
-    cmap = Colormap(stops, name="TestSLDRamp")
-    scaler = get_linear_scaler(0, 100)
-
-    print("--- SLD 1.0.0 RasterSymbolizer (ramp) ---")
-    sld_output_ramp_raster = _export_sld_impl(
-        cmap,
-        scaler,
-        0,
-        100,
-        num_colors=5,
-        sld_version="1.0.0",
-        output_type="ramp",
-        geometry_type="raster",
-        layer_name="MyRasterLayer",
-        style_name="MyRasterStyle",
-        band=1,
-    )
-    print(sld_output_ramp_raster)
-    print("\n")
-
-    print("--- SLD 1.1.0 PolygonSymbolizer (values, global opacity) ---")
-    sld_output_values_poly = _export_sld_impl(
-        cmap,
-        scaler,
-        0,
-        100,
-        sld_version="1.1.0",
-        output_type="values",
-        opacity=0.75,
-        geometry_type="polygon",
-        layer_name="MyPolygonLayer",
-        style_name="MyPolygonStyle",
-    )
-    print(sld_output_values_poly)
-    print("\n")
-
-    # Test with a simpler colormap for intervals
-    simple_stops = [ColorStop("blue", 0.25), ColorStop("green", 0.75)]
-    simple_cmap = Colormap(simple_stops, name="IntervalTest")
-    print("--- SLD 1.0.0 RasterSymbolizer (intervals) ---")
-    sld_output_intervals = _export_sld_impl(
-        simple_cmap,
-        scaler,
-        0,
-        100,
-        output_type="intervals",
-        sld_version="1.0.0",
-        geometry_type="raster",
-        layer_name="MyIntervalLayer",
-        style_name="MyIntervalStyle",
-    )
-    print(sld_output_intervals)

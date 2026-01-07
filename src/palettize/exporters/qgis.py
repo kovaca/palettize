@@ -1,8 +1,10 @@
 """QGIS Color Ramp Exporter for Palettize."""
 
+import warnings
 import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Optional
+
 from palettize.core import Colormap, ScalingFunction
-from typing import Optional, List, Dict, Any
 from ._base import BaseExporter
 
 
@@ -190,10 +192,10 @@ def _export_qgis_color_ramp_impl(  # Renamed original function
             )
             # Fall through to return empty ramp XML, or handle as error
         else:
-            sorted_stops = sorted(colormap.stops, key=lambda s: s.pos)
+            sorted_stops = sorted(colormap.stops, key=lambda s: s.position)
 
             for stop in sorted_stops:
-                data_val = domain_min + stop.pos * (domain_max - domain_min)
+                data_val = domain_min + stop.position * (domain_max - domain_min)
                 # For exact stops, we get the color directly from the stop's parsed color object
                 # We need to ensure it's in sRGB and get its components.
                 # The Colormap's parse_input_color ensures _parsed_color_obj is a ColorAide Color object.
@@ -258,115 +260,3 @@ def _export_qgis_color_ramp_impl(  # Renamed original function
     # For a standalone *.qcr (QGIS Color Ramp) file, it might just be the <colorramp> element itself
     # or <colorramps> with a single <colorramp>. We'll return <colorramps> for broader use.
     return xml_string
-
-
-# Example usage (for testing, not part of the library's public API for direct call)
-if __name__ == "__main__":
-    from palettize.core import Colormap, ColorStop, parse_input_color
-    from palettize.scaling import get_linear_scaler
-    import warnings  # Added for the warning in exact ramp type
-
-    # Create a simple colormap
-    stops = [
-        ColorStop(0.0, "red"),
-        ColorStop(
-            0.5, parse_input_color("lime")
-        ),  # Using direct coloraide object via parse
-        ColorStop(1.0, (0, 0, 255, 128)),  # Blue with alpha
-    ]
-    cmap = Colormap(stops, name="TestQGIS", interpolation_space="oklch")
-
-    lin_scaler = get_linear_scaler(0, 100)
-
-    # Test gradient ramp
-    qgis_xml_gradient = _export_qgis_color_ramp_impl(
-        cmap,
-        lin_scaler,
-        domain_min=0,
-        domain_max=100,
-        num_colors=10,
-        name="My Gradient Test",
-        tags=["test", "gradient"],
-        opacity=0.8,
-    )
-    print("--- QGIS Gradient Ramp ---")
-    print(qgis_xml_gradient)
-    print("\n")
-
-    # Test exact ramp
-    qgis_xml_exact = _export_qgis_color_ramp_impl(
-        cmap,
-        lin_scaler,  # Scaler is less relevant for "exact" if using original stops' positions
-        domain_min=0,  # Domain for mapping stop.pos to values
-        domain_max=100,
-        ramp_type="exact",
-        name="My Exact Test",
-        tags=["test", "exact"],
-        discrete=True,  # Hint for exact interpretation
-        opacity=1.0,
-    )
-    print("--- QGIS Exact Ramp ---")
-    print(qgis_xml_exact)
-
-    # Test with empty stops for exact ramp
-    empty_cmap = Colormap([], name="EmptyQGIS")
-    qgis_xml_empty_exact = _export_qgis_color_ramp_impl(
-        empty_cmap,
-        lin_scaler,
-        domain_min=0,
-        domain_max=100,
-        ramp_type="exact",
-        name="Empty Exact Test",
-    )
-    print("\n--- QGIS Empty Exact Ramp ---")
-    print(qgis_xml_empty_exact)
-
-    # Test with a more complex colormap (e.g., from preset)
-    try:
-        from palettize.presets import load_preset_data
-
-        # Assuming a short viridis preset exists for testing purposes
-        # If PRESET_PALETTES is directly accessible and populated:
-        # from palettize.presets import PRESET_PALETTES
-        # viridis_data = PRESET_PALETTES["viridis_short"]
-        # For now, stick to load_preset_data if it's the intended API for preset access
-        try:
-            viridis_data = load_preset_data("viridis_short")
-        except KeyError:
-            print("\nSkipping Viridis preset test, 'viridis_short' not found.")
-            viridis_data = None  # Ensure viridis_data is defined
-
-        if viridis_data:
-            viridis_cmap = Colormap.from_list(
-                viridis_data, name="Viridis Short QGIS", interpolation_space="srgb"
-            )
-
-            qgis_xml_viridis_gradient = _export_qgis_color_ramp_impl(
-                viridis_cmap,
-                lin_scaler,
-                domain_min=-5,
-                domain_max=5,
-                num_colors=64,
-                name="Viridis Example",
-                tags=["example", "viridis"],
-                opacity=0.9,
-            )
-            print("\n--- QGIS Viridis Gradient Ramp ---")
-            print(qgis_xml_viridis_gradient)
-
-            qgis_xml_viridis_exact = _export_qgis_color_ramp_impl(
-                viridis_cmap,
-                lin_scaler,
-                domain_min=-5,
-                domain_max=5,
-                ramp_type="exact",
-                name="Viridis Exact Example",
-                opacity=1.0,
-            )
-            print("\n--- QGIS Viridis Exact Ramp ---")
-            print(qgis_xml_viridis_exact)
-
-    except ImportError:
-        print("\nSkipping preset example, presets module not found in this context.")
-    # except KeyError: # Already handled for load_preset_data specific key error
-    #     print("\nSkipping preset example, preset not found.")
