@@ -5,6 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+.coverage
 
 # Virtual environments
 .venv
@@ -12,3 +14,5 @@ wheels/
 .cursor
 /project_docs/
 .DS_Store
+.astro/
+node_modules/
