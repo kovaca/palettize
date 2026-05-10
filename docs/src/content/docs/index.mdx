@@ -19,8 +19,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Features
 
 <CardGrid stagger>
-  <Card title="9 Export Formats" icon="document">
-    Export to GDAL, QGIS, SLD, TiTiler, MapLibre GL, Observable Plot, Google Earth Engine, Hex, and RGBA formats.
+  <Card title="14 Export Formats" icon="document">
+    Export to GDAL, QGIS, SLD, TiTiler, MapLibre GL, Observable Plot, GEE, JSON, CSS, SVG, GIMP, Hex, RGBA, and HSL formats.
   </Card>
   <Card title="Advanced Interpolation" icon="setting">
     Use various color spaces like Oklch, sRGB, LAB, and HCL via the ColorAide library.
@@ -36,6 +36,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Quick Example
 
 ```bash
+# Run instantly with uvx (no installation required)
+uvx palettize show viridis
+
 # Preview a colormap in the terminal
 palettize show viridis
 

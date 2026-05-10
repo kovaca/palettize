@@ -5,6 +5,13 @@ description: Get started with Palettize in minutes
 
 This guide will walk you through the basic usage of Palettize. By the end, you'll know how to preview colormaps, create exports, and use Palettize from Python.
 
+:::tip[Try without installing]
+You can run any command with `uvx palettize` instead of `palettize` to use the tool without installing it:
+```bash
+uvx palettize show viridis
+```
+:::
+
 ## Preview a Colormap
 
 The `show` command renders a colormap preview directly in your terminal:
@@ -15,6 +22,9 @@ palettize show viridis
 
 # Show a custom gradient
 palettize show --colors "midnightblue,orange,gold"
+
+# Or use uvx to run without installing
+uvx palettize show viridis
 ```
 
 You can adjust the preview size:

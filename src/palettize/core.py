@@ -316,26 +316,95 @@ class Colormap:
         return interpolated_color
 
     def get_color(
-        self, position: float, output_format: str = "hex"
-    ) -> Union[str, Tuple[int, ...]]:
-        """Gets the interpolated color, formatted as string or tuple."""
+        self, position: float, output_format: str = "hex", output_space: str = "srgb"
+    ) -> Union[str, Tuple[int, ...], Tuple[float, ...]]:
+        """Gets the interpolated color, formatted as string or tuple.
+
+        Args:
+            position: The position in the colormap (0.0 to 1.0).
+            output_format: The format for the output. Supported formats:
+                - "hex": Hex string (#RRGGBB or #RRGGBBAA)
+                - "rgb_tuple": Tuple of 0-255 integers (R, G, B)
+                - "rgba_tuple": Tuple of 0-255 integers (R, G, B, A)
+                - "rgb_float": Tuple of 0.0-1.0 floats (R, G, B)
+                - "rgba_float": Tuple of 0.0-1.0 floats (R, G, B, A)
+                - "hsl_tuple": Tuple (H, S, L) as (0-360, 0-100, 0-100)
+                - "hsl_string": CSS HSL string "hsl(H, S%, L%)"
+                - "oklch_string": CSS OKLCH string "oklch(L% C H)"
+                - "css_color": CSS color() function for wide gamut (e.g., "color(display-p3 ...)")
+            output_space: The color space for output. Supported: "srgb", "display-p3".
+                Only affects "hex", "rgb_*", "rgba_*", and "css_color" formats.
+
+        Returns:
+            The color in the specified format.
+        """
         color_obj = self.get_color_object(position)
-        srgb_color = color_obj.convert(
-            "srgb"
-        )  # Convert to sRGB for standard output formats
+
+        # Handle output space conversion
+        if output_space == "display-p3":
+            output_color = color_obj.convert("display-p3")
+        else:
+            output_color = color_obj.convert("srgb")
+
+        # For formats that need sRGB regardless
+        srgb_color = color_obj.convert("srgb")
 
         if output_format == "hex":
             return srgb_color.to_string(hex=True, fit="clip")
 
-        coords_0_1 = srgb_color.coords(nans=False)
-        alpha_0_1 = srgb_color.alpha(nans=False)
+        if output_format == "css_color":
+            # Wide gamut CSS color() function
+            if output_space == "display-p3":
+                coords = output_color.coords(nans=False)
+                alpha = output_color.alpha(nans=False) or 1.0
+                if abs(alpha - 1.0) < 0.001:
+                    return f"color(display-p3 {coords[0]:.4f} {coords[1]:.4f} {coords[2]:.4f})"
+                else:
+                    return f"color(display-p3 {coords[0]:.4f} {coords[1]:.4f} {coords[2]:.4f} / {alpha:.4f})"
+            else:
+                return srgb_color.to_string(hex=True, fit="clip")
+
+        # HSL formats - use sRGB as base for HSL conversion
+        if output_format == "hsl_tuple":
+            hsl_color = srgb_color.convert("hsl")
+            h, s, l = hsl_color.coords(nans=False)
+            # HSL coords are h: 0-360, s: 0-1, l: 0-1; convert s and l to 0-100
+            return (round(h, 1), round(s * 100, 1), round(l * 100, 1))
+
+        if output_format == "hsl_string":
+            hsl_color = srgb_color.convert("hsl")
+            h, s, l = hsl_color.coords(nans=False)
+            return f"hsl({h:.0f}, {s * 100:.0f}%, {l * 100:.0f}%)"
+
+        # OKLCH format
+        if output_format == "oklch_string":
+            oklch_color = color_obj.convert("oklch")
+            l, c, h = oklch_color.coords(nans=False)
+            # OKLCH: L is 0-1, C is typically 0-0.4, H is 0-360
+            return f"oklch({l * 100:.1f}% {c:.3f} {h:.1f})"
+
+        # RGB/RGBA integer and float formats
+        coords_0_1 = output_color.coords(nans=False)
+        alpha_0_1 = output_color.alpha(nans=False)
         if alpha_0_1 is None:
             alpha_0_1 = 1.0  # Handle cases where alpha might be None
 
-        r = int(max(0, min(255, coords_0_1[0] * 255)))
-        g = int(max(0, min(255, coords_0_1[1] * 255)))
-        b = int(max(0, min(255, coords_0_1[2] * 255)))
-        a = int(max(0, min(255, alpha_0_1 * 255)))
+        # Clip to valid range for the output space
+        r_f = max(0.0, min(1.0, coords_0_1[0]))
+        g_f = max(0.0, min(1.0, coords_0_1[1]))
+        b_f = max(0.0, min(1.0, coords_0_1[2]))
+        a_f = max(0.0, min(1.0, alpha_0_1))
+
+        if output_format == "rgb_float":
+            return (r_f, g_f, b_f)
+        elif output_format == "rgba_float":
+            return (r_f, g_f, b_f, a_f)
+
+        # Integer formats (0-255)
+        r = int(round(r_f * 255))
+        g = int(round(g_f * 255))
+        b = int(round(b_f * 255))
+        a = int(round(a_f * 255))
 
         if output_format == "rgb_tuple":
             return (r, g, b)
@@ -343,21 +412,30 @@ class Colormap:
             return (r, g, b, a)
         else:
             raise ValueError(
-                f"Unsupported output_format: {output_format}. Supported: hex, rgb_tuple, rgba_tuple"
+                f"Unsupported output_format: {output_format}. Supported: hex, rgb_tuple, rgba_tuple, "
+                f"rgb_float, rgba_float, hsl_tuple, hsl_string, oklch_string, css_color"
             )
 
     def __repr__(self) -> str:
         return f"Colormap(name='{self.name}', interpolation_space='{self.interpolation_space}', stops={self.stops}, cut=({self.cut_start},{self.cut_end}))"
 
     def apply_scaler(
-        self, data_value: float, scaler: ScalingFunction, output_format: str = "hex"
-    ) -> Union[str, Tuple[int, ...]]:
+        self,
+        data_value: float,
+        scaler: ScalingFunction,
+        output_format: str = "hex",
+        output_space: str = "srgb",
+    ) -> Union[str, Tuple[int, ...], Tuple[float, ...]]:
         """
         Applies a scaling function to the data_value to get a normalized position,
         then retrieves the color from the colormap in the specified output_format.
         """
         normalized_position = scaler(data_value)
         clamped_normalized_position = max(0.0, min(1.0, normalized_position))
-        return self.get_color(clamped_normalized_position, output_format=output_format)
+        return self.get_color(
+            clamped_normalized_position,
+            output_format=output_format,
+            output_space=output_space,
+        )
 
     # Further methods for interpolation, preset loading etc. will be added.

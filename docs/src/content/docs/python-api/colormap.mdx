@@ -103,12 +103,58 @@ rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 140)
 
 # RGBA tuple (0-255)
 rgba = cmap.get_color(0.5, output_format="rgba_tuple")  # (33, 145, 140, 255)
+
+# RGB float (0-1) - useful for OpenGL, matplotlib
+rgb_float = cmap.get_color(0.5, output_format="rgb_float")  # (0.129, 0.567, 0.551)
+
+# HSL tuple and string
+hsl = cmap.get_color(0.5, output_format="hsl_tuple")  # (178.0, 62.8, 34.8)
+hsl_str = cmap.get_color(0.5, output_format="hsl_string")  # "hsl(178, 63%, 35%)"
+
+# OKLCH string (modern CSS)
+oklch = cmap.get_color(0.5, output_format="oklch_string")  # "oklch(59.5% 0.095 191.2)"
+
+# Wide gamut (Display P3)
+p3 = cmap.get_color(0.5, output_format="css_color", output_space="display-p3")
+# "color(display-p3 0.2770 0.5585 0.5481)"
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `position` | `float` | | Position in colormap (0-1) |
-| `output_format` | `str` | `"hex"` | Format: `"hex"`, `"rgb_tuple"`, `"rgba_tuple"` |
+| `output_format` | `str` | `"hex"` | Output format (see table below) |
+| `output_space` | `str` | `"srgb"` | Color space: `"srgb"` or `"display-p3"` |
+
+#### Output Formats
+
+| Format | Return Type | Example | Use Case |
+|--------|-------------|---------|----------|
+| `hex` | `str` | `"#21918c"` | CSS, general purpose |
+| `rgb_tuple` | `tuple[int, ...]` | `(33, 145, 140)` | Image processing |
+| `rgba_tuple` | `tuple[int, ...]` | `(33, 145, 140, 255)` | Image processing with alpha |
+| `rgb_float` | `tuple[float, ...]` | `(0.129, 0.567, 0.551)` | OpenGL, matplotlib, scientific |
+| `rgba_float` | `tuple[float, ...]` | `(0.129, 0.567, 0.551, 1.0)` | OpenGL with alpha |
+| `hsl_tuple` | `tuple[float, ...]` | `(178.0, 62.8, 34.8)` | Color manipulation |
+| `hsl_string` | `str` | `"hsl(178, 63%, 35%)"` | CSS HSL |
+| `oklch_string` | `str` | `"oklch(59.5% 0.095 191.2)"` | Modern CSS, perceptual |
+| `css_color` | `str` | `"color(display-p3 ...)"` | Wide gamut CSS |
+
+#### Wide Gamut Support
+
+The `output_space` parameter enables wide gamut output for modern displays:
+
+```python
+# Standard sRGB (default)
+srgb_color = cmap.get_color(0.5)  # "#21918d"
+
+# Display P3 (wider gamut)
+p3_color = cmap.get_color(0.5, output_format="css_color", output_space="display-p3")
+# "color(display-p3 0.2770 0.5585 0.5481)"
+
+# RGB floats in P3 space
+p3_rgb = cmap.get_color(0.5, output_format="rgb_float", output_space="display-p3")
+# (0.277, 0.559, 0.548)
+```
 
 #### get_color_object()
 

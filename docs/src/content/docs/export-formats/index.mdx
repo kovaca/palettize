@@ -3,7 +3,7 @@ title: Export Formats Overview
 description: Supported colormap export formats
 ---
 
-Palettize supports exporting colormaps to 9 different formats for GIS applications, web mapping, and data visualization.
+Palettize supports exporting colormaps to 14 different formats for GIS applications, web mapping, and data visualization.
 
 ## Available Formats
 
@@ -18,13 +18,21 @@ Palettize supports exporting colormaps to 9 different formats for GIS applicatio
 | [`gee`](/palettize/export-formats/gee/) | Google Earth Engine | `.js` | GEE Code Editor |
 | [`hex`](/palettize/export-formats/hex/) | Plaintext Hex | `.txt` | General purpose |
 | [`rgba`](/palettize/export-formats/rgba/) | Plaintext RGBA | `.txt` | CSS/web development |
+| [`hsl`](/palettize/export-formats/hsl/) | Plaintext HSL | `.txt` | CSS/web development |
+| [`json`](/palettize/export-formats/json/) | JSON | `.json` | JavaScript apps, config files |
+| [`css`](/palettize/export-formats/css/) | CSS Custom Properties | `.css` | Web design systems |
+| [`gimp`](/palettize/export-formats/gimp/) | GIMP Palette | `.gpl` | GIMP, Inkscape, Krita |
+| [`svg`](/palettize/export-formats/svg/) | SVG Gradient | `.svg` | Web graphics, design tools |
 
 ## Quick Usage
 
 ### CLI
 
 ```bash
-# Single format
+# Run with uvx (no installation required)
+uvx palettize create viridis --format gdal --output viridis.txt --domain 0,255
+
+# Or if installed
 palettize create viridis --format gdal --output viridis.txt --domain 0,255
 
 # Multiple formats
@@ -68,10 +76,21 @@ output = exporter.export(
 
 - **Google Earth Engine**: For GEE Code Editor scripts
 
+### Web Development Formats
+
+- **JSON**: Flexible JSON arrays/objects for JavaScript applications
+- **CSS**: CSS custom properties for design systems
+- **SVG**: SVG gradient elements for web graphics
+
+### Design Tool Formats
+
+- **GIMP**: GIMP Palette format (.gpl) for graphics applications
+
 ### Generic Formats
 
 - **Hex**: Simple hex color lists for any application
 - **RGBA**: CSS-compatible RGBA values
+- **HSL**: CSS-compatible HSL values
 
 ## Common Options
 
@@ -123,4 +142,8 @@ output = exporter.export(
 | Style web maps with MapLibre | `mapgl` |
 | Create D3/Observable visualizations | `observable` |
 | Analyze satellite data in GEE | `gee` |
-| Just need a list of colors | `hex` or `rgba` |
+| Just need a list of colors | `hex`, `rgba`, or `hsl` |
+| Use colors in JavaScript/config files | `json` |
+| Create CSS design system variables | `css` |
+| Use colors in GIMP/Inkscape/Krita | `gimp` |
+| Create web graphics with gradients | `svg` |

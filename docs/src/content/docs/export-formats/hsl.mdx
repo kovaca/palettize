@@ -1,0 +1,155 @@
+---
+title: HSL Export Format
+description: Export colormaps as plaintext HSL colors
+---
+
+The HSL exporter creates plaintext files with CSS-compatible HSL color values.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `hsl` |
+| Extension | `.txt` |
+| Use case | CSS, web development, color manipulation |
+
+## Output Format
+
+```
+hsl(282, 97%, 17%)
+hsl(252, 40%, 39%)
+hsl(175, 63%, 35%)
+hsl(112, 52%, 52%)
+hsl(56, 98%, 57%)
+```
+
+Each line contains HSL values where H is 0-360 (degrees), S and L are 0-100 (percentages).
+
+## CLI Usage
+
+```bash
+# Run with uvx (no installation required)
+uvx palettize create viridis --format hsl --output colors.txt
+
+# Or if installed
+palettize create viridis --format hsl --output colors.txt
+
+# Specific number of colors
+palettize create viridis -f hsl -o colors.txt --steps 10
+
+# Print to stdout
+palettize create viridis -f hsl --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("hsl")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={"num_colors": 10}
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+| `output_format` | `str` | `"css"` | Output format (see below) |
+
+### Output Formats
+
+| Format | Description | Example Output |
+|--------|-------------|----------------|
+| `css` | CSS hsl() format (default) | `hsl(282, 97%, 17%)` |
+| `tuple` | Python tuple format | `(282.0, 97.0, 17.0)` |
+| `json` | JSON array of arrays | `[[282.0, 97.0, 17.0], ...]` |
+
+### CLI Examples
+
+```bash
+# Default CSS format
+palettize create viridis -f hsl --steps 5
+
+# JSON array format
+palettize create viridis -f hsl --steps 5 -O output_format=json
+
+# Python tuple format
+palettize create viridis -f hsl --steps 5 -O output_format=tuple
+```
+
+### Python Examples
+
+```python
+import json
+
+# JSON format - easy to parse
+json_output = exporter.export(
+    cmap, scaler, 0, 1,
+    options={"num_colors": 5, "output_format": "json"}
+)
+colors = json.loads(json_output)
+# [[282.0, 97.0, 17.0], [227.0, 40.0, 39.0], ...]
+```
+
+## Use Cases
+
+### CSS Stylesheets
+
+```css
+.gradient {
+  background: linear-gradient(
+    to right,
+    hsl(282, 97%, 17%),
+    hsl(175, 63%, 35%),
+    hsl(56, 98%, 57%)
+  );
+}
+```
+
+### Color Manipulation
+
+HSL is ideal when you need to manipulate colors programmatically:
+
+```javascript
+// Easily adjust lightness
+const baseColor = 'hsl(282, 97%, 17%)';
+const lighterColor = 'hsl(282, 97%, 30%)';  // Just change L value
+const desaturated = 'hsl(282, 50%, 17%)';   // Just change S value
+```
+
+### Design Systems
+
+HSL makes it easy to create color variations:
+
+```css
+:root {
+  --primary-h: 282;
+  --primary-s: 97%;
+  --primary-l: 17%;
+
+  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+  --primary-light: hsl(var(--primary-h), var(--primary-s), 40%);
+  --primary-dark: hsl(var(--primary-h), var(--primary-s), 10%);
+}
+```
+
+## Comparing to Hex and RGBA
+
+| Feature | Hex | RGBA | HSL |
+|---------|-----|------|-----|
+| Alpha support | No | Yes | No (use HSLA) |
+| Human readable | No | Somewhat | Yes |
+| Easy to manipulate | No | No | Yes |
+| CSS compatible | Yes | Yes | Yes |
+
+Use HSL when you need to understand or manipulate colors intuitively. Use [Hex](/palettize/export-formats/hex/) for compact representation. Use [RGBA](/palettize/export-formats/rgba/) when you need alpha transparency.

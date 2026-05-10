@@ -14,7 +14,11 @@ from .titiler import TitilerExporter
 from .mapgl import MapglExporter
 from .observable_plot import ObservablePlotExporter
 from .gee import GEEExporter
-from .plaintext import HexExporter, RGBAExporter
+from .plaintext import HexExporter, RGBAExporter, HSLExporter
+from .json import JSONExporter
+from .css import CSSExporter
+from .gimp import GIMPExporter
+from .svg import SVGExporter
 
 # Global registry for exporters
 # Maps an identifier string to an instantiated exporter object or a callable that returns one.
@@ -89,6 +93,11 @@ _BUILTIN_EXPORTERS = [
     GEEExporter(),
     HexExporter(),
     RGBAExporter(),
+    HSLExporter(),
+    JSONExporter(),
+    CSSExporter(),
+    GIMPExporter(),
+    SVGExporter(),
 ]
 
 for exporter_instance in _BUILTIN_EXPORTERS:

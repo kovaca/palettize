@@ -1,0 +1,221 @@
+---
+title: JSON Export Format
+description: Export colormaps as flexible JSON structures
+---
+
+The JSON exporter creates JSON files with configurable structure and color formats, ideal for JavaScript applications, configuration files, and APIs.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `json` |
+| Extension | `.json` |
+| Use case | JavaScript apps, config files, APIs |
+
+## Output Format
+
+Default output (array structure with hex colors):
+
+```json
+[
+  "#440154",
+  "#3b528b",
+  "#21918d",
+  "#5cc863",
+  "#fde725"
+]
+```
+
+## CLI Usage
+
+```bash
+# Run with uvx (no installation required)
+uvx palettize create viridis --format json --output colors.json --steps 10
+
+# Or if installed
+palettize create viridis --format json --output colors.json --steps 10
+
+# With structure option
+palettize create viridis -f json -O structure=full --steps 5
+
+# With color format option
+palettize create viridis -f json -O color_format=rgb --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import json
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=100)
+exporter = get_exporter("json")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=100,
+    options={"num_colors": 5, "structure": "full"}
+)
+
+data = json.loads(output)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+| `structure` | `str` | `"array"` | JSON structure (see below) |
+| `color_format` | `str` | `"hex"` | Color format (see below) |
+| `indent` | `int` | `2` | JSON indentation (0 for compact) |
+
+### Structure Options
+
+#### `array` (default)
+
+Simple array of colors:
+
+```json
+["#440154", "#3b528b", "#21918d", "#5cc863", "#fde725"]
+```
+
+#### `array_objects`
+
+Array of objects with position and value:
+
+```json
+[
+  {"position": 0.0, "value": 0.0, "color": "#440154"},
+  {"position": 0.25, "value": 25.0, "color": "#3b528b"},
+  {"position": 0.5, "value": 50.0, "color": "#21918d"},
+  {"position": 0.75, "value": 75.0, "color": "#5cc863"},
+  {"position": 1.0, "value": 100.0, "color": "#fde725"}
+]
+```
+
+#### `object`
+
+Object with 0-255 position keys (common for raster colormaps):
+
+```json
+{
+  "0": "#440154",
+  "64": "#3b528b",
+  "128": "#21918d",
+  "191": "#5cc863",
+  "255": "#fde725"
+}
+```
+
+#### `full`
+
+Complete metadata object:
+
+```json
+{
+  "name": "viridis",
+  "num_colors": 5,
+  "domain": [0, 100],
+  "interpolation_space": "oklch",
+  "colors": ["#440154", "#3b528b", "#21918d", "#5cc863", "#fde725"]
+}
+```
+
+### Color Format Options
+
+| Format | Description | Example |
+|--------|-------------|---------|
+| `hex` | Hex strings (default) | `"#440154"` |
+| `rgb` | RGB arrays | `[68, 1, 84]` |
+| `rgba` | RGBA arrays | `[68, 1, 84, 255]` |
+| `hsl` | HSL arrays | `[282.0, 97.0, 17.0]` |
+
+## Use Cases
+
+### JavaScript Applications
+
+```javascript
+// Fetch colormap from API or file
+const colors = await fetch('viridis.json').then(r => r.json());
+
+// Use with D3
+const colorScale = d3.scaleLinear()
+  .domain([0, colors.length - 1])
+  .range(colors);
+
+// Use with Chart.js
+const chart = new Chart(ctx, {
+  data: { ... },
+  options: {
+    plugins: {
+      colors: {
+        forceOverride: true
+      }
+    }
+  }
+});
+```
+
+### Configuration Files
+
+```json
+{
+  "visualization": {
+    "colormap": ["#440154", "#3b528b", "#21918d", "#5cc863", "#fde725"]
+  }
+}
+```
+
+### REST API Responses
+
+```bash
+# Generate API-ready JSON
+palettize create viridis -f json -O structure=array_objects -O indent=0 --steps 256
+```
+
+### React/Vue Applications
+
+```jsx
+import colors from './viridis.json';
+
+function ColorBar() {
+  return (
+    <div style={{ display: 'flex' }}>
+      {colors.map((color, i) => (
+        <div key={i} style={{ backgroundColor: color, flex: 1, height: 20 }} />
+      ))}
+    </div>
+  );
+}
+```
+
+### Combining with RGB Format
+
+```bash
+# RGB arrays for canvas/WebGL
+palettize create viridis -f json -O color_format=rgb --steps 256
+```
+
+Output:
+```json
+[[68, 1, 84], [59, 82, 139], [33, 145, 141], ...]
+```
+
+Use in JavaScript:
+```javascript
+const [r, g, b] = colors[128];
+ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+```
+
+## Comparing Structures
+
+| Structure | Best For |
+|-----------|----------|
+| `array` | Simple color lists, most JS libraries |
+| `array_objects` | When you need position/value mapping |
+| `object` | Raster colormap compatibility (0-255 keys) |
+| `full` | Complete metadata, documentation |

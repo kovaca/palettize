@@ -1,0 +1,263 @@
+---
+title: SVG Gradient Export Format
+description: Export colormaps as SVG gradient elements
+---
+
+The SVG exporter creates SVG gradient elements (linear or radial) that can be used in SVG graphics, web pages, and design tools.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `svg` |
+| Extension | `.svg` |
+| Use case | Web graphics, design tools, data visualization |
+
+## Output Format
+
+Default output (linear gradient with defs wrapper):
+
+```xml
+<defs>
+  <linearGradient id="palette" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0.00%" stop-color="#440154"/>
+    <stop offset="25.00%" stop-color="#3b528b"/>
+    <stop offset="50.00%" stop-color="#21918d"/>
+    <stop offset="75.00%" stop-color="#5cc863"/>
+    <stop offset="100.00%" stop-color="#fde725"/>
+  </linearGradient>
+</defs>
+```
+
+## CLI Usage
+
+```bash
+# Run with uvx (no installation required)
+uvx palettize create viridis --format svg --output gradient.svg --steps 10
+
+# Or if installed
+palettize create viridis --format svg --output gradient.svg --steps 10
+
+# Radial gradient
+palettize create viridis -f svg -O gradient_type=radial --steps 10
+
+# Full SVG with preview
+palettize create viridis -f svg -O full_svg=true --steps 10
+
+# Custom gradient ID
+palettize create viridis -f svg -O gradient_id=viridis-gradient --steps 10
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("svg")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={
+        "num_colors": 10,
+        "gradient_type": "linear",
+        "gradient_id": "my-gradient",
+        "full_svg": True
+    }
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of color stops |
+| `gradient_type` | `str` | `"linear"` | `"linear"` or `"radial"` |
+| `gradient_id` | `str` | `"palette"` | ID attribute for the gradient |
+| `include_defs` | `bool` | `True` | Wrap in `<defs>` element |
+| `full_svg` | `bool` | `False` | Output complete SVG with preview |
+
+### Linear Gradient Coordinates
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `x1` | `"0%"` | Start X coordinate |
+| `y1` | `"0%"` | Start Y coordinate |
+| `x2` | `"100%"` | End X coordinate |
+| `y2` | `"0%"` | End Y coordinate |
+
+### Radial Gradient Coordinates
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `cx` | `"50%"` | Center X coordinate |
+| `cy` | `"50%"` | Center Y coordinate |
+| `r` | `"50%"` | Radius |
+
+## Examples
+
+### Linear Gradient (Horizontal)
+
+```bash
+palettize create viridis -f svg --steps 5
+```
+
+```xml
+<defs>
+  <linearGradient id="palette" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0.00%" stop-color="#440154"/>
+    <stop offset="25.00%" stop-color="#3b528b"/>
+    <stop offset="50.00%" stop-color="#21918d"/>
+    <stop offset="75.00%" stop-color="#5cc863"/>
+    <stop offset="100.00%" stop-color="#fde725"/>
+  </linearGradient>
+</defs>
+```
+
+### Linear Gradient (Vertical)
+
+```bash
+palettize create viridis -f svg -O x2=0% -O y2=100% --steps 5
+```
+
+```xml
+<defs>
+  <linearGradient id="palette" x1="0%" y1="0%" x2="0%" y2="100%">
+    ...
+  </linearGradient>
+</defs>
+```
+
+### Radial Gradient
+
+```bash
+palettize create viridis -f svg -O gradient_type=radial --steps 5
+```
+
+```xml
+<defs>
+  <radialGradient id="palette" cx="50%" cy="50%" r="50%">
+    <stop offset="0.00%" stop-color="#440154"/>
+    <stop offset="25.00%" stop-color="#3b528b"/>
+    <stop offset="50.00%" stop-color="#21918d"/>
+    <stop offset="75.00%" stop-color="#5cc863"/>
+    <stop offset="100.00%" stop-color="#fde725"/>
+  </radialGradient>
+</defs>
+```
+
+### Full SVG with Preview
+
+```bash
+palettize create viridis -f svg -O full_svg=true --steps 10
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <title>viridis</title>
+  <defs>
+    <linearGradient id="palette" x1="0%" y1="0%" x2="100%" y2="0%">
+      ...
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="400" height="50" fill="url(#palette)"/>
+</svg>
+```
+
+## Use Cases
+
+### Embedding in HTML
+
+```html
+<svg width="200" height="20">
+  <defs>
+    <linearGradient id="colorbar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#440154"/>
+      <stop offset="50%" stop-color="#21918d"/>
+      <stop offset="100%" stop-color="#fde725"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#colorbar)"/>
+</svg>
+```
+
+### D3.js Data Visualization
+
+```javascript
+// Generate gradient with: palettize create viridis -f svg -O include_defs=false --steps 10
+
+const svg = d3.select("#chart");
+
+// Add gradient definition
+svg.append("defs")
+  .html(gradientSvg);  // Insert generated gradient
+
+// Use gradient
+svg.append("rect")
+  .attr("fill", "url(#palette)")
+  .attr("width", 200)
+  .attr("height", 20);
+```
+
+### CSS Background
+
+```html
+<style>
+  .gradient-bar {
+    width: 100%;
+    height: 20px;
+  }
+</style>
+
+<svg class="gradient-bar">
+  <!-- Paste generated gradient here -->
+  <rect width="100%" height="100%" fill="url(#palette)"/>
+</svg>
+```
+
+### Legend/Colorbar for Maps
+
+```javascript
+// Create a colorbar legend for a map
+const legendSvg = `
+<svg width="300" height="40">
+  ${gradientDefs}
+  <rect x="0" y="0" width="300" height="20" fill="url(#palette)"/>
+  <text x="0" y="35" font-size="12">0</text>
+  <text x="150" y="35" font-size="12" text-anchor="middle">50</text>
+  <text x="300" y="35" font-size="12" text-anchor="end">100</text>
+</svg>
+`;
+```
+
+### Design Tools (Figma, Sketch)
+
+Export a full SVG and import into design tools:
+
+```bash
+palettize create viridis -f svg -O full_svg=true -o viridis.svg --steps 256
+```
+
+Then import the SVG file into Figma or Sketch to use as a reference or background.
+
+### Animated Gradients
+
+The generated gradient can be animated with CSS or SMIL:
+
+```html
+<svg width="200" height="20">
+  <defs>
+    <linearGradient id="animated-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <!-- Generated stops here -->
+      <animate attributeName="x1" values="0%;100%;0%" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="x2" values="100%;200%;100%" dur="3s" repeatCount="indefinite"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#animated-gradient)"/>
+</svg>
+```

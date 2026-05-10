@@ -70,6 +70,53 @@ print(colors)  # ['#440154', '#482878', ...]
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `num_colors` | `int` | `256` | Number of colors to generate |
+| `output_format` | `str` | `"lines"` | Output format (see below) |
+
+### Output Formats
+
+| Format | Description | Example Output |
+|--------|-------------|----------------|
+| `lines` | Newline-separated (default) | `#440154\n#482878\n...` |
+| `json` | JSON array with hash | `["#440154", "#482878", ...]` |
+| `json_nohash` | JSON array without hash | `["440154", "482878", ...]` |
+| `csv` | Comma-separated | `#440154, #482878, ...` |
+
+### CLI Examples
+
+```bash
+# Default (lines)
+palettize create viridis -f hex --steps 5
+
+# JSON array
+palettize create viridis -f hex --steps 5 -O output_format=json
+
+# JSON without hash (for APIs that don't want #)
+palettize create viridis -f hex --steps 5 -O output_format=json_nohash
+
+# Comma-separated
+palettize create viridis -f hex --steps 5 -O output_format=csv
+```
+
+### Python Examples
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("hex")
+
+# JSON array output
+json_output = exporter.export(
+    cmap, scaler, 0, 1,
+    options={"num_colors": 5, "output_format": "json"}
+)
+# ["#440154", "#3b528b", "#21918d", "#5cc863", "#fde725"]
+
+# Parse as Python list
+import json
+colors = json.loads(json_output)
+```
 
 ## Use Cases
 

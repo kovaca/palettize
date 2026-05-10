@@ -76,6 +76,67 @@ print(colors)  # [(68, 1, 84, 255), (72, 40, 120, 255), ...]
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `num_colors` | `int` | `256` | Number of colors to generate |
+| `output_format` | `str` | `"css"` | Output format (see below) |
+| `alpha_format` | `str` | `"int"` | Alpha format: `"int"` (0-255) or `"float"` (0-1) |
+
+### Output Formats
+
+| Format | Description | Example Output |
+|--------|-------------|----------------|
+| `css` | CSS rgba() format (default) | `rgba(68, 1, 84, 255)` |
+| `tuple` | Python tuple format | `(68, 1, 84, 255)` |
+| `json` | JSON array of arrays | `[[68, 1, 84, 255], ...]` |
+
+### Alpha Formats
+
+| Format | Description | Example |
+|--------|-------------|---------|
+| `int` | Integer 0-255 (default) | `rgba(68, 1, 84, 255)` |
+| `float` | Float 0-1 | `rgba(68, 1, 84, 1.0)` |
+
+### CLI Examples
+
+```bash
+# Default CSS format
+palettize create viridis -f rgba --steps 5
+
+# JSON array format
+palettize create viridis -f rgba --steps 5 -O output_format=json
+
+# CSS with float alpha (standard CSS format)
+palettize create viridis -f rgba --steps 5 -O alpha_format=float
+
+# Python tuple format
+palettize create viridis -f rgba --steps 5 -O output_format=tuple
+```
+
+### Python Examples
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+import json
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("rgba")
+
+# JSON format - easy to parse
+json_output = exporter.export(
+    cmap, scaler, 0, 1,
+    options={"num_colors": 5, "output_format": "json"}
+)
+colors = json.loads(json_output)
+# [[68, 1, 84, 255], [59, 82, 139, 255], ...]
+
+# CSS format with float alpha
+css_output = exporter.export(
+    cmap, scaler, 0, 1,
+    options={"num_colors": 5, "alpha_format": "float"}
+)
+# rgba(68, 1, 84, 1.0)
+# rgba(59, 82, 139, 1.0)
+# ...
+```
 
 ## Use Cases
 
