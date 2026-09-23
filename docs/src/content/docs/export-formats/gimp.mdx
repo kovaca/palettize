@@ -1,0 +1,202 @@
+---
+title: GIMP Palette Export Format
+description: Export colormaps as GIMP Palette (.gpl) files
+---
+
+The GIMP exporter creates palette files in the GIMP Palette format (.gpl), which is supported by GIMP, Inkscape, Krita, and many other graphics applications.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `gimp` |
+| Extension | `.gpl` |
+| Use case | GIMP, Inkscape, Krita, graphics editors |
+
+## Output Format
+
+```
+GIMP Palette
+Name: viridis
+Columns: 16
+#
+ 68   1  84	color-0
+ 59  82 139	color-1
+ 33 145 141	color-2
+ 92 200  99	color-3
+253 231  37	color-4
+```
+
+Each color entry contains:
+- RGB values (0-255) with space alignment
+- Tab-separated color name
+
+## CLI Usage
+
+```bash
+# Run with uvx (no installation required)
+uvx palettize create viridis --format gimp --output viridis.gpl --steps 16
+
+# Or if installed
+palettize create viridis --format gimp --output viridis.gpl --steps 16
+
+# Custom palette name
+palettize create viridis -f gimp -O palette_name="My Viridis" --steps 10
+
+# Custom column count
+palettize create viridis -f gimp -O columns=8 --steps 64
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("gimp")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={
+        "num_colors": 16,
+        "palette_name": "Viridis Gradient",
+        "columns": 8
+    }
+)
+
+# Save to file
+with open("viridis.gpl", "w") as f:
+    f.write(output)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+| `palette_name` | `str` | colormap name | Name displayed in palette dialog |
+| `columns` | `int` | `16` | Number of columns in palette grid |
+| `color_names` | `bool` | `True` | Include color names |
+
+### Palette Name
+
+```bash
+palettize create plasma -f gimp -O palette_name="Plasma Scientific" --steps 10
+```
+
+```
+GIMP Palette
+Name: Plasma Scientific
+Columns: 16
+#
+...
+```
+
+### Columns
+
+Controls how the palette is displayed in a grid view:
+
+```bash
+# 8 columns for a wider layout
+palettize create viridis -f gimp -O columns=8 --steps 64
+```
+
+### Color Names
+
+Disable color names for cleaner output:
+
+```bash
+palettize create viridis -f gimp -O color_names=false --steps 5
+```
+
+```
+GIMP Palette
+Name: viridis
+Columns: 16
+#
+ 68   1  84
+ 59  82 139
+ 33 145 141
+ 92 200  99
+253 231  37
+```
+
+## Use Cases
+
+### GIMP
+
+1. Export the palette:
+   ```bash
+   palettize create viridis -f gimp -o ~/.config/GIMP/2.10/palettes/viridis.gpl --steps 256
+   ```
+
+2. In GIMP:
+   - Open Windows → Dockable Dialogs → Palettes
+   - Right-click → Refresh Palettes
+   - Your palette appears in the list
+
+### Inkscape
+
+1. Export the palette:
+   ```bash
+   palettize create viridis -f gimp -o ~/.config/inkscape/palettes/viridis.gpl --steps 64
+   ```
+
+2. In Inkscape:
+   - Open Object → Fill and Stroke
+   - Click the palette icon
+   - Select your palette from the dropdown
+
+### Krita
+
+1. Export the palette:
+   ```bash
+   palettize create viridis -f gimp -o ~/.local/share/krita/palettes/viridis.gpl --steps 32
+   ```
+
+2. In Krita:
+   - Open Settings → Manage Resources
+   - Click Refresh
+   - Access via the Palette docker
+
+### Aseprite
+
+Aseprite can import GIMP palettes:
+
+1. Export with limited colors (Aseprite works best with smaller palettes):
+   ```bash
+   palettize create viridis -f gimp -o viridis.gpl --steps 32
+   ```
+
+2. In Aseprite:
+   - Open Sprite → Color Mode → Indexed
+   - Click "Load Palette" and select the .gpl file
+
+### Batch Export Multiple Palettes
+
+```bash
+# Export several colormaps as GIMP palettes
+for cmap in viridis plasma inferno magma; do
+  palettize create $cmap -f gimp -o "${cmap}.gpl" --steps 64
+done
+```
+
+## GPL File Format Reference
+
+The GIMP Palette format is a simple text format:
+
+```
+GIMP Palette           # Required header
+Name: Palette Name     # Palette name (shown in UI)
+Columns: 16            # Optional: grid columns
+#                      # Comments start with #
+R G B\tcolor-name      # Color entries: RGB values, tab, name
+```
+
+- RGB values are space-separated integers (0-255)
+- Color names are optional but helpful
+- Comments with `#` are allowed after the header section

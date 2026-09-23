@@ -12,115 +12,178 @@ Palettize helps create colormaps for data visualization, GIS, and web mapping. I
 ## Installation
 
 ```bash
+# Run it without installing
+uvx palettize show viridis
+
+# Or install it
 uv pip install palettize
+pip install palettize
 ```
 
-Or install from source:
-```bash
-git clone https://github.com/kovaca/palettize.git
-cd palettize
-uv pip install .
-```
-
-## Usage
+## Quick tour
 
 ```bash
-palettize --help
+palettize show viridis                  # preview a colormap in the terminal
+palettize analyze viridis               # check it for perceptual problems
+palettize list presets --search blue    # find a colormap
+palettize formats                       # see the export formats
+palettize create viridis -f gdal -o ramp.txt --domain 0,3000
 ```
 
-### Key Commands
+### Preview
 
--   **`palettize show`**: Render a colormap preview in your terminal.
--   **`palettize create`**: Export a colormap to one or more file formats.
--   **`palettize list`**: List available `presets` or `exporters`.
+```bash
+palettize show viridis                        # full-width gradient bar
+palettize show viridis --steps 7 --hex        # 7 discrete bands, with hex codes
+palettize show -c "midnightblue,orange,gold"  # a colormap of your own
+palettize show viridis -o preview.png         # write a PNG or SVG instead
+```
 
-### Examples
+### Analyze
 
-1.  **Show a built-in preset colormap:**
-    ```bash
-    palettize show viridis
-    ```
+`palettize analyze` answers the question that actually matters: is this colormap safe to
+publish? It reports whether lightness increases steadily, whether equal data steps look
+equally different, and how the map degrades for each form of color vision deficiency.
 
-2.  **Show a custom gradient made of three colors:**
-    ```bash
-    palettize show --colors "midnightblue,orange,gold"
-    ```
+```bash
+palettize analyze cividis
+palettize analyze jet --strict     # exit non-zero when problems are found, for CI
+palettize analyze viridis --json   # machine-readable
+```
 
-3.  **Export the 'viridis' preset to a GDAL color ramp file:**
-    The `--domain` flag maps the colormap to your data's range.
-    ```bash
-    palettize create viridis --format gdal --output viridis_gdal.txt --domain 0,255
-    ```
+```
+cividis  256 stops
 
-4.  **Create a custom colormap and export it to multiple formats:**
-    Use `--steps` to define the number of discrete colors in the output.
-    ```bash
-    palettize create -c "blue,white,red" --format qgis,mapgl \
-      --output "output/rwb_{format}.{ext}" --steps 11 --name "RedWhiteBlue"
-    ```
-    This creates `output/rwb_qgis.xml` and `output/rwb_mapgl.json`.
+  original  ████████████████████████████████████████
+  protan    ████████████████████████████████████████   96% kept   ok
+  deutan    ████████████████████████████████████████   87% kept   ok
+  tritan    ████████████████████████████████████████   72% kept   ok
 
-5.  **List all available built-in presets:**
-    ```bash
-    palettize list presets
-    ```
+  lightness    sequential, ascending
+               ▁▁▁▁▂▂▂▂▃▃▃▃▄▄▄▄▅▅▅▅▆▆▆▆▇▇▇▇████
+  range        66 of 100
+  uniformity   variation 0.16 (even)
+  step size    mean 2.8 ΔE, range 1.6-3.7
 
-6.  **Pass format-specific options during export:**
-    Use the `-O` or `--option` flag to pass key-value pairs to an exporter.
-    ```bash
-    # Tell the 'observable' exporter to create a diverging scale with a pivot
-    palettize create RdBu -f observable --domain -5,10 -o plot.json \
-      -O type=diverging -O pivot=0
-    ```
+  No problems detected.
+```
 
-## Programmatic usage
+### Export
 
-You can also use Palettize from Python by importing the library.
+```bash
+# A GDAL color-relief ramp over your data's actual range
+palettize create viridis -f gdal -o elevation.txt --domain 0,3000
+
+# Several formats at once, with a filename pattern
+palettize create -c "blue,white,red" -f qgis,mapgl \
+  -o "out/{name}_{format}.{ext}" --steps 11 --name RedWhiteBlue
+
+# Non-linear scaling, for skewed data
+palettize create viridis -f gdal --domain 1,10000 --scale log
+
+# Format-specific options
+palettize create viridis -f gdal -O gdal:nodata=false
+```
+
+Run `palettize formats <name>` to see exactly which options a format accepts, with types and
+defaults — no guessing.
+
+### Transform and reuse
+
+Every command accepts `--reverse`, `--cut`, and `--steps`, and any colormap can be saved to a
+portable JSON file and used anywhere a preset name would be:
+
+```bash
+palettize create viridis --cut 0.2,0.8 --reverse --save my-map.json
+palettize show my-map.json
+palettize create my-map.json -f css -o theme.css
+```
+
+## Python API
 
 ```python
-from palettize import (
-    create_colormap,
-    list_available_presets,
-    get_scaler_by_name,
-)
+from palettize import Colormap, analyze, create_colormap, get_scaler_by_name
 
-# Inspect presets
-print(list_available_presets()[:5])
+cmap = Colormap.from_preset("viridis")
 
-# Create from preset
-cmap = create_colormap(preset="custom/grayscale", name="Grayscale", cut_start=0.1, cut_end=0.9)
-print(cmap.get_color(0.5))  # hex string
-print(cmap.get_color(0.5, output_format="rgb_tuple"))
+# Sampling
+cmap(0.5)                      # '#21918d'
+cmap.hex_colors(5)             # ['#440154', '#3b528b', '#21918d', '#5cc863', '#fde725']
+cmap.rgb_colors(5)
+len(cmap)                      # 256 stops
 
-# Create from a list of colors
-cmap2 = create_colormap(colors=["#0000ff", "white", "#ff0000"], name="BlueWhiteRed")
+# Transforms all return new colormaps
+cmap.reversed()                # name becomes 'viridis_r'
+cmap.cut(0.2, 0.8)             # a sub-range; cuts compose
+cmap.resampled(11)             # refit to 11 evenly spaced stops
+cmap.quantized(5)              # 5 hard-edged bands
+cmap.blend(Colormap.from_preset("magma"), 0.5)
+cmap + Colormap.from_preset("magma")   # concatenate
 
-# Use a scaler to map data values onto the colormap
-scaler = get_scaler_by_name("symlog", domain_min=-10, domain_max=10, linthresh=1, base=10)
-print(cmap2.apply_scaler(3.2, scaler))
+# Save and reload
+cmap.reversed().save("my-map.json")
+Colormap.load("my-map.json")
+
+# Perceptual analysis
+report = analyze(cmap)
+report.lightness.shape          # 'sequential'
+report.uniformity.is_uniform    # True
+report.warnings                 # plain-language descriptions of any problems
+
+# Map data values onto colors
+scaler = get_scaler_by_name("log", domain_min=1, domain_max=1000)
+cmap.apply_scaler(250, scaler)
+
+# Or start from a list of colors
+create_colormap(colors=["#0000ff", "white", "#ff0000"], name="BlueWhiteRed")
 ```
+
+## Export formats
+
+| Format | Identifier | Use case |
+| --- | --- | --- |
+| GDAL color relief | `gdal` | `gdaldem` raster styling |
+| QGIS color ramp | `qgis` | QGIS styles |
+| OGC SLD | `sld` | GeoServer, MapServer |
+| TiTiler | `titiler` | Tile server URL parameter |
+| MapLibre GL | `mapgl` | Web map style expressions |
+| Observable Plot | `observable` | Plot scale definitions |
+| Google Earth Engine | `gee` | GEE JavaScript snippets |
+| CSS | `css` | Custom properties |
+| SVG | `svg` | Gradient definitions |
+| GIMP palette | `gimp` | GIMP, Inkscape, Krita |
+| JSON | `json` | Generic interchange |
+| Hex / RGBA / HSL | `hex`, `rgba`, `hsl` | Plain text color lists |
+
+`palettize formats` lists these with their file extensions; `palettize formats <name>` shows
+each one's options.
 
 ## Features
 
--   **Flexible Colormap Creation**: Generate colormaps from lists of colors (hex, RGB, named) or use built-in presets.
--   **Advanced Interpolation**: Supports various color spaces for interpolation via the ColorAide library (e.g., Oklch, sRGB, LAB).
--   **Terminal Preview**: Instantly visualize any colormap in your terminal.
--   **Multiple Export Formats**: Supports common formats for GIS (GDAL, QGIS, SLD, Titiler) and web (MapLibre GL, Observable Plot).
--   **Customizable Scaling**: Apply linear, power, sqrt, or log scaling to map your data domain to the colormap.
--   **Plugin System for Exporters**: Easily extendable with new export formats.
--   **CLI with Rich Output**: User-friendly command-line interface with clear help messages and rich formatting.
+- **~650 presets** from the [`cmap`](https://github.com/tlambert03/cmap) catalog, searchable
+  by name, category, and publisher.
+- **Perceptual interpolation** in any ColorAide space (Oklch by default), with correct hue
+  paths and gamut handling.
+- **Perceptual analysis** built in: lightness monotonicity, ΔE2000 uniformity, and
+  colorblind simulation for protanopia, deuteranopia, and tritanopia.
+- **Composable transforms** — reverse, cut, resample, quantize, blend, concatenate.
+- **Portable colormap files** you can save, share, and feed back into any command.
+- **Plugin system** for third-party export formats via the `palettize.exporters` entry point.
+- **No image dependencies** — PNG output is written with the standard library alone.
 
-## Available Presets
+## Development
 
-The incredibly useful `cmap` library is a core dependency used for presets. To see a list of colormap presets, run:
-`palettize list presets`
+```bash
+uv sync --extra dev
+uv run pytest                    # run the tests
+uv run pytest --update-golden    # accept intentional export-format changes
+uv run ruff check src/ tests/
+uv run mypy src/palettize
+```
 
+Exporter output is covered by golden-file tests. When you deliberately change a format, run
+`pytest --update-golden` and review the resulting diff before committing.
 
+## License
 
-## Available Export Formats
-
-To see a list of all currently registered and available export formats, run:
-`palettize list exporters`
-
-
-
+MIT

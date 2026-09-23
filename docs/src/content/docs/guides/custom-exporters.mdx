@@ -12,12 +12,17 @@ All exporters inherit from `BaseExporter` and implement required methods.
 ### Basic Structure
 
 ```python
-from palettize.exporters._base import BaseExporter
-from palettize.core import Colormap
-from palettize import ScalingFunction
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar
+from collections.abc import Mapping
+
+from palettize import Colormap, Opt, OptionSpec, ScalingFunction
+from palettize.exporters import BaseExporter
 
 class MyExporter(BaseExporter):
+    options: ClassVar[OptionSpec] = OptionSpec(
+        Opt("num_colors", int, 10, "Number of color steps.", minimum=2),
+    )
+
     @property
     def identifier(self) -> str:
         """Unique identifier used in CLI and get_exporter()"""
@@ -29,7 +34,7 @@ class MyExporter(BaseExporter):
         return "My Custom Format"
 
     @property
-    def default_file_extension(self) -> Optional[str]:
+    def default_file_extension(self) -> str | None:
         """Default file extension (without dot)"""
         return "txt"
 
@@ -39,21 +44,22 @@ class MyExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
         """Generate output string"""
-        options = options or {}
-        num_colors = options.get("num_colors", 10)
+        num_colors = self.resolve_options(options)["num_colors"]
 
         lines = []
         for i in range(num_colors):
-            position = i / (num_colors - 1)
+            position = i / (num_colors - 1) if num_colors > 1 else 0.5
             data_val = domain_min + position * (domain_max - domain_min)
             color = colormap.apply_scaler(data_val, scaler)
             lines.append(f"{data_val}: {color}")
 
         return "\n".join(lines)
 ```
+
+Declare every option as an `Opt`. That declaration coerces CLI strings (`-O num_colors=256`), rejects bad values, and is what `palettize formats myformat` prints. Read the resolved dict inside `export`; do not call `options.get` on the raw mapping.
 
 ### Required Methods
 
@@ -114,12 +120,17 @@ my-palettize-exporters/
 `src/my_exporters/formats.py`:
 
 ```python
-from palettize.exporters._base import BaseExporter
-from palettize.core import Colormap
-from palettize import ScalingFunction
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar
+from collections.abc import Mapping
+
+from palettize import Colormap, Opt, OptionSpec, ScalingFunction
+from palettize.exporters import BaseExporter
 
 class CSVExporter(BaseExporter):
+    options: ClassVar[OptionSpec] = OptionSpec(
+        Opt("num_colors", int, 256, "Number of color steps.", minimum=2),
+    )
+
     @property
     def identifier(self) -> str:
         return "csv"
@@ -129,7 +140,7 @@ class CSVExporter(BaseExporter):
         return "CSV Color Table"
 
     @property
-    def default_file_extension(self) -> Optional[str]:
+    def default_file_extension(self) -> str | None:
         return "csv"
 
     def export(
@@ -138,10 +149,9 @@ class CSVExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
-        options = options or {}
-        num_colors = options.get("num_colors", 256)
+        num_colors = self.resolve_options(options)["num_colors"]
 
         lines = ["value,r,g,b,a"]
         for i in range(num_colors):
@@ -182,12 +192,18 @@ palettize create viridis -f csv -o colors.csv --domain 0,255
 
 ```python
 import xml.etree.ElementTree as ET
-from palettize.exporters._base import BaseExporter
-from palettize.core import Colormap
-from palettize import ScalingFunction
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar
+from collections.abc import Mapping
+
+from palettize import Colormap, Opt, OptionSpec, ScalingFunction
+from palettize.exporters import BaseExporter
 
 class XMLColorTableExporter(BaseExporter):
+    options: ClassVar[OptionSpec] = OptionSpec(
+        Opt("num_colors", int, 256, "Number of color steps.", minimum=2),
+        Opt("name", str, None, "Table name. Defaults to the colormap name."),
+    )
+
     @property
     def identifier(self) -> str:
         return "xmlct"
@@ -197,7 +213,7 @@ class XMLColorTableExporter(BaseExporter):
         return "XML Color Table"
 
     @property
-    def default_file_extension(self) -> Optional[str]:
+    def default_file_extension(self) -> str | None:
         return "xml"
 
     def export(
@@ -206,11 +222,11 @@ class XMLColorTableExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
-        options = options or {}
-        num_colors = options.get("num_colors", 256)
-        cmap_name = options.get("name", colormap.name or "colormap")
+        opts = self.resolve_options(options)
+        num_colors = opts["num_colors"]
+        cmap_name = opts["name"] or colormap.name or "colormap"
 
         root = ET.Element("ColorTable", name=cmap_name)
         root.set("domain_min", str(domain_min))
@@ -225,40 +241,25 @@ class XMLColorTableExporter(BaseExporter):
             entry.set("value", f"{data_val:.4f}")
             entry.set("color", hex_color)
 
-        try:
-            ET.indent(root, space="  ")
-        except AttributeError:
-            pass  # Python < 3.9
-
+        ET.indent(root, space="  ")
         return ET.tostring(root, encoding="unicode", xml_declaration=True)
 ```
 
-## Handling Options
+## Declaring Options
 
-Document and validate your options:
+`Opt` is the validation. A `bool` option accepts `true`/`false` from the CLI, an `int` rejects `5.5`, and `choices` limits a string to a set. `palettize formats <id>` prints `help`, the type, and the default.
 
 ```python
-def export(self, colormap, scaler, domain_min, domain_max, options=None):
-    """
-    Export colormap to My Format.
+from palettize import Opt, OptionSpec
 
-    Options:
-        num_colors (int): Number of colors. Default 256.
-        include_header (bool): Include header line. Default True.
-        precision (int): Decimal places. Default 2.
-    """
-    options = options or {}
+options = OptionSpec(
+    Opt("num_colors", int, 256, "Number of colors.", minimum=2),
+    Opt("include_header", bool, True, "Include a header line."),
+    Opt("precision", int, 2, "Decimal places.", minimum=0),
+)
 
-    # Get with defaults
-    num_colors = options.get("num_colors", 256)
-    include_header = options.get("include_header", True)
-    precision = options.get("precision", 2)
-
-    # Validate
-    if not isinstance(num_colors, int) or num_colors < 2:
-        raise ValueError("num_colors must be an integer >= 2")
-
-    # Use options...
+opts = self.resolve_options(options_from_caller)
+num_colors = opts["num_colors"]
 ```
 
 ## Testing Your Exporter
@@ -287,8 +288,8 @@ def test_csv_identifier():
 
 ## Best Practices
 
-1. **Validate options**: Check types and ranges
-2. **Document options**: List accepted options in docstrings
+1. **Declare options with `Opt`**: types, ranges, and help text live in one place
+2. **Keep help to one line**: `palettize formats` prints it as the option description
 3. **Handle edge cases**: Empty colormaps, single color, etc.
 4. **Use meaningful defaults**: Most users won't specify options
 5. **Return strings**: The `export()` method always returns a string

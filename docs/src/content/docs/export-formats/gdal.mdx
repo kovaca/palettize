@@ -87,10 +87,11 @@ with open("viridis.txt", "w") as f:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `num_colors` | `int` | `256` | Number of color steps to generate |
-| `nodata` | `bool` | `true` | Include `nv 0 0 0 0` line by default |
-| `nodata_value` | `float \| str` | `"nv"` | NoData value. Use `"nv"` for GDAL keyword or a numeric value |
-| `nodata_color` | `tuple[int,int,int,int]` | `(0,0,0,0)` | RGBA color for NoData |
-| `verbose` | `bool` | `false` | Include comment header lines (set automatically by `-v` flag) |
+| `nodata` | `bool` | `true` | Emit a nodata line. When false, `nodata_value` is ignored |
+| `nodata_value` | `str` | (unset) | Token for the nodata line. Defaults to `nv` when `nodata` is true |
+| `nodata_color` | `r,g,b,a` | `0, 0, 0, 0` | RGBA color for the nodata line |
+| `precision` | `int` | (unset) | Decimal places for data values |
+| `verbose` | `bool` | `false` | Include comment header lines (set automatically by `-v`) |
 
 ## Using with GDAL
 

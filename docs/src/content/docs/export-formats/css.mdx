@@ -1,0 +1,265 @@
+---
+title: CSS Export Format
+description: Export colormaps as CSS custom properties
+---
+
+The CSS exporter creates CSS custom properties (CSS variables) for use in web design systems and stylesheets.
+
+## Format Details
+
+| Property | Value |
+|----------|-------|
+| Identifier | `css` |
+| Extension | `.css` |
+| Use case | Web design systems, theming |
+
+## Output Format
+
+```css
+:root {
+  --color-0: #440154;
+  --color-1: #3b528b;
+  --color-2: #21918d;
+  --color-3: #5cc863;
+  --color-4: #fde725;
+}
+```
+
+## CLI Usage
+
+```bash
+# Run with uvx (no installation required)
+uvx palettize create viridis --format css --output palette.css --steps 10
+
+# Or if installed
+palettize create viridis --format css --output palette.css --steps 10
+
+# Custom prefix
+palettize create viridis -f css -O prefix=viridis --steps 5
+
+# Custom selector
+palettize create viridis -f css -O selector=".dark-theme" --steps 5
+
+# Include HSL variants
+palettize create viridis -f css -O include_hsl=true --steps 5
+```
+
+## Python Usage
+
+```python
+from palettize import create_colormap, get_scaler_by_name, get_exporter
+
+cmap = create_colormap(preset="viridis")
+scaler = get_scaler_by_name("linear", domain_min=0, domain_max=1)
+exporter = get_exporter("css")
+
+output = exporter.export(
+    colormap=cmap,
+    scaler=scaler,
+    domain_min=0,
+    domain_max=1,
+    options={
+        "num_colors": 5,
+        "prefix": "viridis",
+        "include_hsl": True
+    }
+)
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `num_colors` | `int` | `256` | Number of colors to generate |
+| `prefix` | `str` | `"color"` | Variable name prefix |
+| `selector` | `str` | `":root"` | CSS selector wrapper |
+| `include_hsl` | `bool` | `False` | Include HSL versions |
+| `include_rgb` | `bool` | `False` | Include RGB component variables |
+| `color_format` | `str` | `"hex"` | Primary format: `"hex"`, `"hsl"`, `"rgb"` |
+
+### Prefix Option
+
+Variables are named `--{prefix}-{index}`:
+
+```bash
+palettize create viridis -f css -O prefix=brand --steps 3
+```
+
+```css
+:root {
+  --brand-0: #440154;
+  --brand-1: #21918d;
+  --brand-2: #fde725;
+}
+```
+
+### Selector Option
+
+Wrap variables in any CSS selector:
+
+```bash
+palettize create viridis -f css -O selector=".dark-theme" --steps 3
+```
+
+```css
+.dark-theme {
+  --color-0: #440154;
+  --color-1: #21918d;
+  --color-2: #fde725;
+}
+```
+
+Use empty string for no selector:
+
+```bash
+palettize create viridis -f css -O selector="" --steps 3
+```
+
+```css
+  --color-0: #440154;
+  --color-1: #21918d;
+  --color-2: #fde725;
+```
+
+### Include HSL Option
+
+Add HSL versions of each color:
+
+```bash
+palettize create viridis -f css -O include_hsl=true --steps 2
+```
+
+```css
+:root {
+  --color-0: #440154;
+  --color-0-hsl: hsl(282, 97%, 17%);
+  --color-1: #fde725;
+  --color-1-hsl: hsl(56, 98%, 57%);
+}
+```
+
+### Include RGB Option
+
+Add individual RGB component variables:
+
+```bash
+palettize create viridis -f css -O include_rgb=true --steps 2
+```
+
+```css
+:root {
+  --color-0: #440154;
+  --color-0-r: 68;
+  --color-0-g: 1;
+  --color-0-b: 84;
+  --color-1: #fde725;
+  --color-1-r: 253;
+  --color-1-g: 231;
+  --color-1-b: 37;
+}
+```
+
+## Use Cases
+
+### Design System Color Tokens
+
+```css
+/* palette.css */
+:root {
+  --viridis-0: #440154;
+  --viridis-1: #482878;
+  --viridis-2: #3e4989;
+  --viridis-3: #31688e;
+  --viridis-4: #26828e;
+  --viridis-5: #1f9e89;
+  --viridis-6: #35b779;
+  --viridis-7: #6ece58;
+  --viridis-8: #b5de2b;
+  --viridis-9: #fde725;
+}
+
+/* Use in components */
+.heatmap-low { background: var(--viridis-0); }
+.heatmap-mid { background: var(--viridis-5); }
+.heatmap-high { background: var(--viridis-9); }
+```
+
+### Theme Switching
+
+```css
+/* light-theme.css */
+:root {
+  --primary-0: #440154;
+  --primary-1: #21918d;
+  --primary-2: #fde725;
+}
+
+/* dark-theme.css - inverted */
+.dark {
+  --primary-0: #fde725;
+  --primary-1: #21918d;
+  --primary-2: #440154;
+}
+```
+
+### Tailwind CSS Integration
+
+Generate a palette and convert to Tailwind config:
+
+```bash
+palettize create viridis -f json --steps 10 | jq -r 'to_entries | map("\(.key): \"\(.value)\"") | join(",\n")'
+```
+
+Or use in `tailwind.config.js`:
+
+```javascript
+// Generate with: palettize create viridis -f json --steps 10
+const viridis = require('./viridis.json');
+
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        viridis: Object.fromEntries(
+          viridis.map((color, i) => [i * 100, color])
+        )
+      }
+    }
+  }
+}
+```
+
+### Dynamic Color Manipulation with HSL
+
+```css
+:root {
+  --color-0: #440154;
+  --color-0-hsl: hsl(282, 97%, 17%);
+}
+
+.button {
+  background: var(--color-0);
+}
+
+.button:hover {
+  /* Lighten on hover using HSL */
+  background: hsl(282, 97%, 25%);
+}
+```
+
+### SCSS/Sass Usage
+
+Export CSS variables and use in Sass:
+
+```scss
+@import 'palette.css';
+
+.gradient {
+  background: linear-gradient(
+    to right,
+    var(--viridis-0),
+    var(--viridis-5),
+    var(--viridis-9)
+  );
+}
+```

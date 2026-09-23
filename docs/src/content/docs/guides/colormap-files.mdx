@@ -1,0 +1,108 @@
+---
+title: Colormap Files
+description: Save a colormap once and reuse it everywhere
+---
+
+Once you have tuned a colormap — cut it, reversed it, built it from your brand colors — you
+can save it to a small JSON file and use it anywhere a preset name would work.
+
+## Saving
+
+```bash
+palettize create viridis --cut 0.2,0.8 --reverse --save my-map.json
+```
+
+```python
+from palettize import Colormap
+
+Colormap.from_preset("viridis").cut(0.2, 0.8).reversed().save("my-map.json")
+```
+
+`--save` can be combined with `--format`, so you can export and archive in one call:
+
+```bash
+palettize create -c "blue,white,red" --name RedWhiteBlue \
+  --save rwb.json -f qgis -o rwb.xml
+```
+
+## Using a saved colormap
+
+Every command that accepts a colormap accepts a path to one of these files:
+
+```bash
+palettize show my-map.json
+palettize analyze my-map.json
+palettize create my-map.json -f css -o theme.css
+```
+
+```python
+Colormap.load("my-map.json")
+```
+
+A path is recognized by a `.json` extension, or by containing a directory separator and
+existing on disk. Everything else is treated as a preset name.
+
+## File format
+
+```json
+{
+  "palettize": 1,
+  "name": "viridis_r",
+  "interpolation_space": "oklch",
+  "cut": [0.2, 0.8],
+  "stops": [
+    { "color": "#fde725", "position": 0.0 },
+    { "color": "#21918d", "position": 0.5 },
+    { "color": "#440154", "position": 1.0 }
+  ]
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `palettize` | Schema version. A file from a newer schema is refused with a clear message rather than misread. |
+| `name` | Display name, used for file naming and in exporter output. May be `null`. |
+| `interpolation_space` | Color space used between stops, e.g. `oklch` or `srgb`. |
+| `cut` | `[start, end]` sub-range of the stops that is visible. |
+| `stops` | Colors and their positions in `0-1`. |
+
+Colors are written as hex when hex is exact. When it would not be — a fractional alpha, or
+coordinates outside the sRGB gamut — Palettize writes an explicit
+`color(srgb r g b / a)` form instead, so a round trip never loses precision:
+
+```json
+{ "color": "color(srgb 0 0 1 / 0.5)", "position": 1.0 }
+```
+
+A stop may also be written as a bare color string, in which case positions are assigned
+evenly. This makes hand-written files easy:
+
+```json
+{ "palettize": 1, "name": "Brand", "stops": ["#003f5c", "#bc5090", "#ffa600"] }
+```
+
+## Round-trip guarantees
+
+Saving and reloading produces a colormap that compares equal to the original and samples
+identically:
+
+```python
+original = Colormap.from_preset("viridis").cut(0.2, 0.8).reversed()
+original.save("m.json")
+Colormap.load("m.json") == original   # True
+```
+
+Stop positions are rounded to twelve decimal places when a colormap is constructed, which
+keeps chained transforms from accumulating floating-point noise while staying far finer
+than any perceptible difference.
+
+## Error handling
+
+Malformed files raise `ColormapFileError` with a message that names the problem, and the
+CLI exits with code 4:
+
+```
+Error: Stop 2 is invalid: Invalid color for stop (color=notacolor, position=0.5)
+Error: Unsupported colormap schema version 2; this build of Palettize
+understands up to version 1. Upgrade Palettize.
+```

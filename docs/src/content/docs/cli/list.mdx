@@ -3,15 +3,26 @@ title: palettize list
 description: List available presets and exporters
 ---
 
-The `list` command group provides subcommands to explore available resources.
+The `list` command group explores presets and export formats. `palettize formats` is the fuller view of formats: it also prints each format's options.
 
 ## List Presets
 
-Show all available colormap presets:
-
 ```bash
 palettize list presets
+palettize list presets --search blue --category sequential --limit 20
+palettize list presets --namespace colorbrewer --swatch
+palettize list categories
 ```
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--search` | `-q` | | Keep presets whose name contains this text. |
+| `--category` | | | `sequential`, `diverging`, `cyclic`, `qualitative`, or `miscellaneous`. |
+| `--namespace` | | | Filter by publisher, e.g. `colorbrewer`. |
+| `--swatch` | | | Draw a gradient beside each row. |
+| `--limit` | | `50` | Maximum rows. `0` shows every match. |
+
+`palettize list categories` prints each category and how many presets it contains.
 
 This displays a table of all preset names from the [cmap](https://cmap-docs.readthedocs.io/) library plus any custom presets.
 
@@ -31,6 +42,14 @@ Example output:
 └──────────────────────────────────────┘
 ```
 
+## Preset detail
+
+```bash
+palettize presets viridis
+```
+
+Prints that preset's category, source, and a short swatch. A missing name suggests `palettize list presets --search`.
+
 ### Using Presets
 
 Once you find a preset name, use it with `show` or `create`:
@@ -49,31 +68,13 @@ Presets come from multiple sources:
 
 ## List Exporters
 
-Show all available export formats:
-
 ```bash
 palettize list exporters
+palettize formats          # same list, plus whether each format uses --domain and --scale
+palettize formats gdal     # options, types, and defaults for one format
 ```
 
-This displays a table with exporter identifiers and their names.
-
-Example output:
-```
-             Available Palettize Exporters
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Identifier                   ┃ Name                 ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
-│ gdal                         │ GDAL Color Relief    │
-│ gee                          │ Google Earth Engine  │
-│ hex                          │ Plaintext Hex        │
-│ mapgl                        │ MapLibre GL JS       │
-│ observable                   │ Observable Plot      │
-│ qgis                         │ QGIS Color Ramp XML  │
-│ rgba                         │ Plaintext RGBA       │
-│ sld                          │ OGC SLD XML          │
-│ titiler                      │ TiTiler Colormap URL │
-└──────────────────────────────┴──────────────────────┘
-```
+Built-in identifiers: `gdal`, `qgis`, `sld`, `titiler`, `mapgl`, `observable`, `gee`, `css`, `svg`, `gimp`, `json`, `hex`, `rgba`, `hsl`.
 
 ### Using Exporters
 

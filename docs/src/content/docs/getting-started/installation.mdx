@@ -7,9 +7,27 @@ description: How to install Palettize
 
 - Python 3.10 or higher
 
+## Run Without Installing (uvx)
+
+The fastest way to use Palettize is with `uvx`, which runs the tool without permanent installation:
+
+```bash
+# Run any palettize command directly
+uvx palettize show viridis
+uvx palettize create viridis -f hex --steps 10
+uvx palettize list presets
+```
+
+This is ideal for one-off usage, CI/CD pipelines, or trying out the tool. [uv](https://docs.astral.sh/uv/) must be installed first:
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ## Install from PyPI
 
-The recommended way to install Palettize is via pip or uv:
+For regular use, install Palettize permanently:
 
 ```bash
 # Using pip
@@ -56,7 +74,6 @@ Palettize automatically installs the following dependencies:
 | [coloraide](https://github.com/facelessuser/coloraide) | Advanced color manipulation and interpolation |
 | [typer](https://typer.tiangolo.com/) | CLI framework |
 | [rich](https://rich.readthedocs.io/) | Terminal formatting and colors |
-| [webcolors](https://webcolors.readthedocs.io/) | Named color support |
 | [cmap](https://cmap-docs.readthedocs.io/) | Colormap presets library |
 
 ## Next Steps

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<colorramps>
+  <colorramp name="RefMap" type="gradient">
+    <item alpha="255" color="#0000ff" position="0.0000" />
+    <item alpha="255" color="#00cfbd" position="0.2500" />
+    <item alpha="255" color="#ffff00" position="0.5000" />
+    <item alpha="255" color="#ff9800" position="0.7500" />
+    <item alpha="255" color="#ff0000" position="1.0000" />
+  </colorramp>
+</colorramps>

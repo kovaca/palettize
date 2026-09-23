@@ -3,7 +3,14 @@ title: Quick Start
 description: Get started with Palettize in minutes
 ---
 
-This guide will walk you through the basic usage of Palettize. By the end, you'll know how to preview colormaps, create exports, and use Palettize from Python.
+This guide walks through previewing a colormap, checking it, saving it, and exporting it. The same steps work from Python.
+
+:::tip[Try without installing]
+You can run any command with `uvx palettize` instead of `palettize` to use the tool without installing it:
+```bash
+uvx palettize show viridis
+```
+:::
 
 ## Preview a Colormap
 
@@ -15,12 +22,26 @@ palettize show viridis
 
 # Show a custom gradient
 palettize show --colors "midnightblue,orange,gold"
+
+# Or use uvx to run without installing
+uvx palettize show viridis
 ```
 
-You can adjust the preview size:
+You can adjust the preview, reverse it, or write an image:
 
 ```bash
 palettize show viridis --width 80 --height 3
+palettize show viridis --steps 7 --hex
+palettize show viridis --reverse -o preview.png
+```
+
+## Check a Colormap
+
+`analyze` reports lightness, perceptual step size, and how the map looks under protanopia, deuteranopia, and tritanopia:
+
+```bash
+palettize analyze cividis
+palettize analyze jet --strict   # non-zero exit when problems are found
 ```
 
 ## Export a Colormap
@@ -56,16 +77,22 @@ This creates:
 - `output/viridis_qgis.xml`
 - `output/viridis_mapgl.json`
 
-## List Available Resources
+## Save and Reuse
 
-See what presets and exporters are available:
+`--save` writes a JSON file. Any command that takes a preset also accepts that file:
 
 ```bash
-# List all colormap presets
-palettize list presets
+palettize create viridis --cut 0.2,0.8 --reverse --save my-map.json
+palettize show my-map.json
+palettize create my-map.json -f css -o theme.css
+```
 
-# List all export formats
-palettize list exporters
+## Find a Preset or a Format
+
+```bash
+palettize list presets --search blue --category sequential
+palettize formats
+palettize formats gdal
 ```
 
 ## Using from Python
@@ -79,8 +106,8 @@ from palettize import create_colormap, get_scaler_by_name
 cmap = create_colormap(preset="viridis", name="Viridis")
 
 # Get a color at a specific position (0-1)
-hex_color = cmap.get_color(0.5)  # Returns "#21918c"
-rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # Returns (33, 145, 140)
+hex_color = cmap.get_color(0.5)  # Returns "#21918d"
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # Returns (33, 145, 141)
 
 # Create from custom colors
 cmap2 = create_colormap(
@@ -99,3 +126,4 @@ color_at_50 = cmap2.apply_scaler(50, scaler)  # Color at the midpoint
 - Explore the [Python API](/palettize/python-api/)
 - See all [Export Formats](/palettize/export-formats/)
 - Understand [Color Interpolation](/palettize/guides/color-interpolation/)
+- [Transform](/palettize/guides/transforms/) and [save](/palettize/guides/colormap-files/) colormaps

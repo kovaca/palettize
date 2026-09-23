@@ -1,34 +1,39 @@
 [project]
 name = "palettize"
 dynamic = ["version"]
-description = "A Python CLI tool for creating and exporting colormaps for data visualization and mapping applications."
+description = "A Python CLI and library for previewing, checking, and exporting colormaps."
 authors = [
     { name = "Alex Kovac", email = "5686693+kovaca@users.noreply.github.com" }
 ]
 license = "MIT"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.9"
+keywords = ["colormap", "palette", "visualization", "gis", "gdal", "qgis", "cli"]
+requires-python = ">=3.10"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Graphics",
     "Topic :: Scientific/Engineering :: Visualization",
+    "Typing :: Typed",
 ]
-
 dependencies = [
-    "coloraide>=0.24",  
-    "typer>=0.9", 
-    "rich>=13.0",      
-    "webcolors>=1.13", 
+    "coloraide>=4.0",
+    "typer>=0.9",
+    "rich>=13.0",
     "cmap>=0.6.0",
 ]
+
+[project.urls]
+Documentation = "https://kovaca.github.io/palettize"
+Repository = "https://github.com/kovaca/palettize"
+Changelog = "https://github.com/kovaca/palettize/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -40,6 +45,10 @@ dev = [
 
 [project.scripts]
 palettize = "palettize.cli:app"
+
+# Built-in exporters are registered directly for import speed; this group is the
+# documented extension point for third-party exporter plugins.
+[project.entry-points."palettize.exporters"]
 
 
 [build-system]
@@ -73,3 +82,44 @@ addopts = "--cov=src/palettize --cov-report=term-missing --cov-report=xml"
 
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "RUF",    # Ruff-specific rules
+    "PTH",    # flake8-use-pathlib
+    "TID",    # flake8-tidy-imports
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name (l is idiomatic for HSL/OKLCH lightness)
+    "UP038",  # isinstance(x, X | Y) is slower than the tuple form and is deprecated upstream
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer's whole API is built on function calls in argument defaults.
+"src/palettize/cli.py" = ["B008"]
+# RUF012: parametrize tables read better as plain class attributes.
+"tests/*" = ["E741", "RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["palettize"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["tests/"]

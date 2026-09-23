@@ -3,7 +3,7 @@ title: palettize show
 description: Preview colormaps in the terminal
 ---
 
-The `show` command renders a colormap preview directly in your terminal using colored block characters.
+The `show` command renders a colormap preview in the terminal, or writes a PNG or SVG.
 
 ## Usage
 
@@ -15,7 +15,7 @@ palettize show [PRESET_NAME] [OPTIONS]
 
 | Argument | Description |
 |----------|-------------|
-| `PRESET_NAME` | Name of a preset palette (e.g., `viridis`). Optional if `--colors` is provided. |
+| `PRESET_NAME` | Preset name (e.g. `viridis`) or path to a saved colormap JSON file. Optional if `--colors` is provided. |
 
 ## Options
 
@@ -26,6 +26,10 @@ palettize show [PRESET_NAME] [OPTIONS]
 | `--height` | `-H` | `1` | Height for preview in lines (minimum: 1). |
 | `--space` | `-s` | `oklch` | Color space for interpolation. |
 | `--cut` | | `0,1` | Sub-segment of the colormap to use (e.g., `0.2,0.8`). |
+| `--reverse` | `-r` | | Reverse the colormap before previewing. |
+| `--steps` | `-n` | | Render this many discrete bands instead of a smooth bar. |
+| `--output` | `-o` | | Write a `.png` or `.svg` preview instead of drawing in the terminal. |
+| `--hex` | | | Print the hex value of each step under the preview. |
 | `--name` | | | Set a display name for the colormap. |
 
 ## Examples
@@ -86,4 +90,13 @@ palettize show viridis --cut "0.2,0.8"
 
 # Use only the first half
 palettize show viridis --cut "0,0.5"
+```
+
+### Reverse, Sample, or Save an Image
+
+```bash
+palettize show viridis --reverse
+palettize show viridis --steps 7 --hex
+palettize show viridis -o preview.png
+palettize show my-map.json
 ```

@@ -1,0 +1,114 @@
+---
+title: palettize analyze
+description: Check a colormap for perceptual and accessibility problems
+---
+
+The `analyze` command answers the question that decides whether a colormap is safe to
+publish: does its lightness increase steadily, do equal data steps look equally different,
+and does it survive the common forms of color vision deficiency?
+
+## Usage
+
+```bash
+palettize analyze [COLORMAP] [OPTIONS]
+```
+
+`COLORMAP` is a preset name (`viridis`), a path to a saved colormap file
+(`./my-map.json`), or omitted in favour of `--colors`.
+
+## Options
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--colors` | `-c` | | Analyze a colormap built from these colors. |
+| `--samples` | | `32` | Number of evenly spaced samples to take. |
+| `--reverse` | `-r` | `false` | Reverse the colormap before analyzing. |
+| `--cut` | | `0,1` | Analyze only this sub-segment. |
+| `--space` | `-s` | `oklch` | Color space used for interpolation. |
+| `--json` | | `false` | Emit machine-readable JSON instead of a report. |
+| `--strict` | | `false` | Exit non-zero if any warnings are found. |
+
+## Example
+
+```bash
+palettize analyze cividis
+```
+
+```
+cividis  256 stops
+
+  original  ████████████████████████████████████████
+  protan    ████████████████████████████████████████   96% kept   ok
+  deutan    ████████████████████████████████████████   87% kept   ok
+  tritan    ████████████████████████████████████████   72% kept   ok
+
+  lightness    sequential, ascending
+               ▁▁▁▁▂▂▂▂▃▃▃▃▄▄▄▄▅▅▅▅▆▆▆▆▇▇▇▇████
+  range        66 of 100
+  uniformity   variation 0.16 (even)
+  step size    mean 2.8 ΔE, range 1.6-3.7
+
+  No problems detected.
+```
+
+## What it measures
+
+### Lightness profile
+
+Palettize samples Oklab lightness across the colormap and classifies the shape:
+
+- **sequential** — lightness only ever rises or only ever falls. The right shape for
+  ordered data.
+- **diverging** — one turning point, lightness peaking or troughing in the middle. Correct
+  for diverging data, wrong for sequential data. Reported as a note, not a warning.
+- **erratic** — lightness wanders through several direction changes. This makes features
+  appear in a visualization where the data has none, and is warned about.
+
+The `range` line reports how much of the 0-100 lightness scale the map spans. A map with a
+small span relies on hue alone and will not survive grayscale printing.
+
+### Perceptual uniformity
+
+The ΔE2000 distance between consecutive samples should be roughly constant, so that equal
+differences in the data look like equal differences on screen. Palettize reports the
+coefficient of variation of those step sizes; below `0.25` reads as even.
+
+### Colorblind safety
+
+Each color is passed through protanopia, deuteranopia, and tritanopia simulations, and the
+resulting step sizes are compared to the originals. The report shows the *worst-preserved*
+step as a percentage of its original size, plus where in the colormap it occurs. A map that
+keeps less than 30% of any step has a region that reads as a flat band to those viewers.
+
+Retention is measured as a ratio rather than an absolute ΔE, so the verdict does not change
+when you vary `--samples`.
+
+## Using it in CI
+
+`--strict` exits with code 3 when any warnings are found, so a build can refuse colormaps
+that are not accessible:
+
+```bash
+palettize analyze "$MY_COLORMAP" --strict
+```
+
+## JSON output
+
+```bash
+palettize analyze viridis --json --samples 8
+```
+
+The payload contains `name`, `samples`, `colors`, `lightness`, `uniformity`, `cvd`
+(keyed by `protan`, `deutan`, `tritan`), `warnings`, and `notes`.
+
+## Python equivalent
+
+```python
+from palettize import Colormap, analyze
+
+report = analyze(Colormap.from_preset("viridis"))
+report.lightness.shape                     # 'sequential'
+report.uniformity.coefficient_of_variation # 0.16
+report.cvd[0].worst_retention              # worst-preserved step, protanopia
+report.warnings                            # [] when there are no problems
+```

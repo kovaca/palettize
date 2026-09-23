@@ -3,7 +3,7 @@ title: CLI Overview
 description: Command-line interface reference for Palettize
 ---
 
-Palettize provides a command-line interface for generating, previewing, and exporting colormaps.
+Palettize provides a command-line interface for previewing, checking, and exporting colormaps.
 
 ## Basic Usage
 
@@ -25,10 +25,15 @@ These options are available for all commands:
 
 | Command | Description |
 |---------|-------------|
-| [`show`](/palettize/cli/show/) | Render a colormap preview in the terminal |
-| [`create`](/palettize/cli/create/) | Export a colormap to one or more file formats |
-| [`list presets`](/palettize/cli/list/) | List all available preset palettes |
-| [`list exporters`](/palettize/cli/list/) | List all available export formats |
+| [`show`](/palettize/cli/show/) | Preview a colormap in the terminal, or write a PNG or SVG |
+| [`analyze`](/palettize/cli/analyze/) | Check lightness, uniformity, and color-vision safety |
+| [`create`](/palettize/cli/create/) | Export a colormap, or save it as a reusable JSON file |
+| [`formats`](/palettize/cli/formats/) | List export formats and the options each one accepts |
+| [`list presets`](/palettize/cli/list/) | Search the preset catalog |
+| [`list categories`](/palettize/cli/list/) | List preset categories |
+| [`list exporters`](/palettize/cli/list/) | List export formats (same as `formats`) |
+| [`presets`](/palettize/cli/list/#preset-detail) | Show one preset's metadata |
+| [`info`](/palettize/cli/info/) | Show the version, links, and a banner |
 
 ## Exit Codes
 

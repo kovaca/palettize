@@ -8,20 +8,16 @@ The `create` command exports colormaps to one or more file formats for use in GI
 ## Usage
 
 ```bash
-palettize create [PRESET_NAME] --format FORMAT [OPTIONS]
+palettize create [PRESET_NAME] [OPTIONS]
 ```
+
+Pass `--format` to export, `--save` to store the colormap, or both. A run with neither exits as a usage error.
 
 ## Arguments
 
 | Argument | Description |
 |----------|-------------|
-| `PRESET_NAME` | Name of a preset palette (e.g., `viridis`). Optional if `--colors` is provided. |
-
-## Required Options
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--format` | `-f` | One or more export format identifiers. Use multiple times or comma-separate. |
+| `PRESET_NAME` | Preset name (e.g. `viridis`) or path to a saved colormap JSON file. Optional if `--colors` is provided. |
 
 ## Colormap Options
 
@@ -30,15 +26,18 @@ palettize create [PRESET_NAME] --format FORMAT [OPTIONS]
 | `--colors` | `-c` | | List of input colors to create a colormap from. |
 | `--space` | `-s` | `oklch` | Color space for interpolation. |
 | `--cut` | | `0,1` | Sub-segment of the colormap to use (e.g., `0.2,0.8`). |
+| `--reverse` | `-r` | | Reverse the colormap before exporting. |
 | `--name` | | | Name for the colormap, used in file naming and output. |
+| `--save` | | | Write the colormap to this JSON path. Works without `--format`. |
 
 ## Output Options
 
 | Option | Short | Default | Description |
 |--------|-------|---------|-------------|
+| `--format` | `-f` | | Export format identifiers. Use multiple times or comma-separate. Required unless you only `--save`. |
 | `--output` | `-o` | stdout | Output path pattern. Supports `{name}`, `{format}`, `{ext}` placeholders. |
-| `--steps` | `-n` | `7` | Number of discrete color steps for outputs. Minimum: 2. |
-| `--precision` | | | Decimal places for numeric values in output. |
+| `--steps` | `-n` | `7` | Number of color steps. Minimum: 2. Also sets `num_colors` when that option is unset. |
+| `--precision` | | | Decimal places for data values. Read by `gdal` and `mapgl`. |
 
 ## Data Domain and Scaling
 
@@ -49,6 +48,8 @@ palettize create [PRESET_NAME] --format FORMAT [OPTIONS]
 | `--scale-exponent` | | | Exponent for `power` scale. Required when `--scale=power`. |
 | `--scale-log-base` | | `10` | Log base for `log` or `symlog` scales. |
 | `--scale-symlog-linthresh` | | | Linear threshold for `symlog` scale. Required when `--scale=symlog`. |
+
+`--scale` moves colors for `gdal`, `mapgl`, and for `qgis` / `sld` when they emit a gradient or ramp. Discrete QGIS ramps (`exact`, `approximate`) and discrete SLD maps (`intervals`, `values`) keep the colormap's own stops. Other formats either ignore the scaler or record the scale name for the application to apply. `palettize formats` marks which formats use the domain and the scaler.
 
 ## Format-Specific Options
 
@@ -166,8 +167,8 @@ Output:
 ```
 #440154
 #3b528b
-#21918c
-#5ec962
+#21918d
+#5cc863
 #fde725
 ```
 
@@ -179,14 +180,20 @@ palettize -v create viridis -f gdal -o viridis.txt --domain 0,255
 
 Output:
 ```
-Exporting to gdal format...
-Successfully wrote to viridis.txt
-Export process completed.
+Exporting to gdal...
+Wrote viridis.txt
+Export complete.
+```
+
+### Save without Exporting
+
+```bash
+palettize create viridis --cut 0.2,0.8 --reverse --save my-map.json
 ```
 
 ## Available Formats
 
-Run `palettize list exporters` to see all available formats:
+Run `palettize formats` for the live list, including each format's options:
 
 | Identifier | Description |
 |------------|-------------|
@@ -197,7 +204,12 @@ Run `palettize list exporters` to see all available formats:
 | `mapgl` | MapLibre GL JS Expression |
 | `observable` | Observable Plot Scale |
 | `gee` | Google Earth Engine Snippet |
+| `css` | CSS Custom Properties |
+| `svg` | SVG Gradient |
+| `gimp` | GIMP Palette |
+| `json` | JSON |
 | `hex` | Plaintext Hexadecimal |
 | `rgba` | Plaintext RGBA |
+| `hsl` | Plaintext HSL |
 
 See [Export Formats](/palettize/export-formats/) for detailed documentation of each format.

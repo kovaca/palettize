@@ -1,0 +1,106 @@
+---
+title: palettize formats
+description: Discover export formats and the options each one accepts
+---
+
+The `formats` command lists the available export formats, and describes the options any one
+of them accepts. Every option shown here can be passed to
+[`palettize create`](/palettize/cli/create/) with `-O`.
+
+## Usage
+
+```bash
+palettize formats            # list every format
+palettize formats gdal       # describe one format's options
+```
+
+## Listing formats
+
+```bash
+palettize formats
+```
+
+```
+                    Export formats
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┓
+┃ Format     ┃ Description                    ┃ Ext  ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━┩
+│ css        │ CSS Custom Properties          │ css  │
+│ gdal       │ GDAL Color Relief Text         │ txt  │
+│ gee        │ Google Earth Engine Snippet    │ js   │
+│ gimp       │ GIMP Palette                   │ gpl  │
+│ ...        │                                │      │
+└────────────┴────────────────────────────────┴──────┘
+```
+
+Formats contributed by [plugins](/palettize/guides/custom-exporters/) appear here alongside
+the built-in ones.
+
+## Describing a format
+
+```bash
+palettize formats gdal
+```
+
+```
+gdal — GDAL Color Relief Text
+Default extension: .txt
+Places colors at data values: both --domain and --scale change the output.
+
+┏━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Option       ┃ Type   ┃ Default    ┃ Description                           ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ num_colors   │ int    │ 256        │ Number of colors to sample.           │
+│ nodata       │ bool   │ true       │ Emit a nodata line.                   │
+│ nodata_value │ str    │ (unset)    │ Nodata value. Defaults to 'nv'.       │
+│ nodata_color │ custom │ 0, 0, 0, 0 │ Nodata RGBA color as 'r,g,b,a'.       │
+│ precision    │ int    │ (unset)    │ Decimal places for data values.       │
+│ verbose      │ bool   │ false      │ Include a descriptive comment header. │
+│ scale_type   │ str    │ unknown    │ Scaler name recorded in the header.   │
+└──────────────┴────────┴────────────┴───────────────────────────────────────┘
+```
+
+The `Type` column tells you what values are accepted. Options with a fixed set of choices
+show them inline, as `one of: lines, json, csv`.
+
+## Does this format use the data domain?
+
+Below the format name, one of three notes appears:
+
+- **Places colors at data values** — both `--domain` and `--scale` change the output.
+  Applies to `gdal`, `qgis`, `sld`, and `mapgl`.
+- **Records `--domain` in the output** — the domain is written into the file, and `--scale`
+  matters only under some options. Applies to `json`, `observable`, and `gee`.
+- **Emits a plain color list** — the format has no data axis, so `--domain` and `--scale`
+  do not apply. Applies to `css`, `gimp`, `svg`, `hex`, `rgba`, `hsl`, and `titiler`.
+
+This is worth checking before assuming a non-linear `--scale` has taken effect.
+
+## Passing options
+
+Options are passed to `create` with `-O`, either globally or scoped to one format:
+
+```bash
+# Applies to every format in this run
+palettize create viridis -f hex,css -O num_colors=16
+
+# Applies only to the gdal exporter
+palettize create viridis -f gdal,qgis -O gdal:nodata=false
+```
+
+Values are always strings on the command line; Palettize coerces them to the declared type
+and reports a clear error if the value does not fit:
+
+```
+Error in 'hex' options: Option 'output_format' must be one of:
+lines, json, json_nohash, csv. Got: 'bogus'
+```
+
+An option name that a format does not recognize produces a warning rather than being
+silently ignored.
+
+## See also
+
+- [`palettize create`](/palettize/cli/create/) — using these formats
+- [Export format reference](/palettize/export-formats/) — details of each output
+- [Custom exporters](/palettize/guides/custom-exporters/) — adding your own

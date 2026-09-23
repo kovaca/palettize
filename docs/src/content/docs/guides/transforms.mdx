@@ -1,0 +1,130 @@
+---
+title: Transforming Colormaps
+description: Reverse, cut, resample, quantize, blend, and combine colormaps
+---
+
+Palettize colormaps are values, not mutable objects: every transform returns a new
+`Colormap` and leaves the original untouched. That makes them safe to chain and safe to
+share.
+
+```python
+from palettize import Colormap
+
+viridis = Colormap.from_preset("viridis")
+custom = viridis.cut(0.15, 0.9).reversed().quantized(7)
+
+viridis(0.5)   # unchanged
+```
+
+The most common transforms are also available on the command line as `--reverse`, `--cut`,
+and `--steps`, on `show`, `create`, and `analyze` alike.
+
+## Reverse
+
+```python
+viridis.reversed()
+```
+
+```bash
+palettize show viridis --reverse
+```
+
+Reversing follows matplotlib's naming convention, toggling an `_r` suffix: `viridis` becomes
+`viridis_r`, and reversing again returns `viridis`. Reversal composes correctly with a cut,
+so `cmap.cut(0.2, 0.8).reversed()` is the 0.2-0.8 window read backwards.
+
+## Cut
+
+Take a sub-range of a colormap. This is the usual fix for a map whose extreme ends are too
+dark or too pale for your data.
+
+```python
+viridis.cut(0.2, 0.8)
+```
+
+```bash
+palettize show viridis --cut 0.2,0.8
+```
+
+Coordinates are relative to the *current* visible range, so cuts compose the way you would
+expect: `cmap.cut(0.5, 1.0).cut(0.0, 0.5)` is the third quarter of the original.
+
+## Resample
+
+Refit the colormap to a fixed number of evenly spaced stops. Useful for shrinking a
+256-stop preset into something compact, and for baking a cut into a standalone map.
+
+```python
+viridis.resampled(11)          # 11 stops, still a smooth gradient
+viridis.cut(0.2, 0.8).resampled(32)   # cut is baked in; result spans 0-1
+```
+
+## Quantize
+
+Turn a smooth gradient into hard-edged bands, each taking the color at its own midpoint.
+This is what you want for classed choropleths.
+
+```python
+viridis.quantized(5)
+```
+
+```bash
+palettize show viridis --steps 5
+palettize create viridis --steps 5 -f qgis
+```
+
+Quantizing is different from resampling: `resampled(5)` gives five stops with smooth
+interpolation between them, while `quantized(5)` gives five flat bands with visible steps.
+
+## Blend
+
+Mix two colormaps position by position.
+
+```python
+viridis.blend(Colormap.from_preset("magma"), 0.5)
+```
+
+Both maps are sampled and mixed pairwise, so blending works regardless of how their stops
+line up. A weight of `0.0` returns the receiver, `1.0` returns the other map.
+
+## Concatenate
+
+Join two colormaps end to end, which is how you build a diverging map out of two sequential
+ones.
+
+```python
+blues = Colormap.from_preset("colorbrewer:Blues").reversed()
+reds = Colormap.from_preset("colorbrewer:Reds")
+
+diverging = blues + reds              # joined at the midpoint
+uneven = blues.concat(reds, at=0.3)   # joined 30% of the way along
+```
+
+## Order of operations
+
+When several transforms are applied from the CLI, they run in this order:
+
+1. `--cut` selects a window
+2. `--reverse` mirrors it
+3. `--steps` bands the result
+
+So `palettize show viridis --cut 0.2,1 --reverse --steps 5` gives five bands of the top 80%
+of viridis, read backwards. In Python you control the order yourself by chaining.
+
+## Saving the result
+
+Any transformed colormap can be written to a portable file and reused wherever a preset
+name would work:
+
+```bash
+palettize create viridis --cut 0.2,0.8 --reverse --save my-map.json
+palettize show my-map.json
+palettize create my-map.json -f css -o theme.css
+```
+
+```python
+custom.save("my-map.json")
+Colormap.load("my-map.json")
+```
+
+See [Colormap files](/palettize/guides/colormap-files/) for the file format.

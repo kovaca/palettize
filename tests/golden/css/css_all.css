@@ -1,0 +1,12 @@
+:root {
+  --color-0: #0000ff;
+  --color-0-hsl: hsl(240, 100%, 50%);
+  --color-0-r: 0;
+  --color-0-g: 0;
+  --color-0-b: 255;
+  --color-1: #ff0000;
+  --color-1-hsl: hsl(0, 100%, 50%);
+  --color-1-r: 255;
+  --color-1-g: 0;
+  --color-1-b: 0;
+}

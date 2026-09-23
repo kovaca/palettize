@@ -1,9 +1,9 @@
 ---
 title: Palettize
-description: A Python CLI tool for generating, previewing, and exporting colormaps for GIS and web mapping.
+description: A Python CLI and library for previewing, checking, and exporting colormaps.
 template: splash
 hero:
-  tagline: Generate, preview, and export colormaps from the command line or Python
+  tagline: Preview, check, and export colormaps from the command line or Python
   actions:
     - text: Get Started
       link: /palettize/getting-started/installation/
@@ -19,8 +19,8 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Features
 
 <CardGrid stagger>
-  <Card title="9 Export Formats" icon="document">
-    Export to GDAL, QGIS, SLD, TiTiler, MapLibre GL, Observable Plot, Google Earth Engine, Hex, and RGBA formats.
+  <Card title="14 Export Formats" icon="document">
+    Export to GDAL, QGIS, SLD, TiTiler, MapLibre GL, Observable Plot, GEE, JSON, CSS, SVG, GIMP, Hex, RGBA, and HSL formats.
   </Card>
   <Card title="Advanced Interpolation" icon="setting">
     Use various color spaces like Oklch, sRGB, LAB, and HCL via the ColorAide library.
@@ -31,19 +31,29 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   <Card title="Rich Presets" icon="list-format">
     Access hundreds of colormaps from the cmap library including viridis, magma, inferno, and more.
   </Card>
+  <Card title="Perceptual Checks" icon="approve-check">
+    Check lightness, uniformity, and color-vision deficiency before you publish.
+  </Card>
+  <Card title="Save and Reuse" icon="star">
+    Save a colormap to JSON and pass that file anywhere a preset name works.
+  </Card>
 </CardGrid>
 
 ## Quick Example
 
 ```bash
+# Run instantly with uvx (no installation required)
+uvx palettize show viridis
+
 # Preview a colormap in the terminal
 palettize show viridis
 
-# Create a custom gradient and export to GDAL format
-palettize create --colors "blue,white,red" --format gdal --output bwr.txt --domain 0,255
+# Check it before you publish
+palettize analyze viridis
 
-# Export to multiple formats at once
-palettize create viridis --format gdal,qgis,mapgl --output "{name}_{format}.{ext}"
+# Save a cut of the map, then reuse the file
+palettize create viridis --cut 0.2,0.8 --save my-map.json
+palettize create my-map.json --format gdal --output ramp.txt --domain 0,255
 ```
 
 ## Why Palettize?
@@ -54,3 +64,4 @@ Palettize bridges the gap between data visualization and GIS/web mapping workflo
 - **Preview instantly**: See your colormap in the terminal before exporting
 - **Use perceptually uniform color spaces**: Get better color interpolation with Oklch and LAB
 - **Scale to your data**: Map colormaps to your actual data domain with various scaling functions
+- **Check before you publish**: Lightness, perceptual step size, and color-vision previews are built in
