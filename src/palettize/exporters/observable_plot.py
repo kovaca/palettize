@@ -1,15 +1,44 @@
-from palettize.core import Colormap, ScalingFunction
-from ._base import BaseExporter
-from typing import Any, Dict, Optional
+"""Exporter for Observable Plot color scale definitions."""
+
+from __future__ import annotations
+
 import json
 import warnings
+from collections.abc import Mapping
+from typing import Any, ClassVar
+
+from palettize.core import Colormap, ScalingFunction
+
+from ._base import BaseExporter
+from ._options import Opt, OptionSpec
+
+_D3_INTERPOLATORS = {
+    "srgb": "d3.interpolateRgb",
+    "lab": "d3.interpolateLab",
+    "hcl": "d3.interpolateHcl",
+    "oklch": "d3.interpolateHcl",
+}
 
 
 class ObservablePlotExporter(BaseExporter):
+    """An Observable Plot color scale object.
+
+    See https://observablehq.com/plot/features/scales
     """
-    Exports a colormap to an Observable Plot color scale definition object.
-    See: https://observablehq.com/plot/features/scales
-    """
+
+    uses_domain: ClassVar[bool] = True
+
+    options: ClassVar[OptionSpec] = OptionSpec(
+        Opt("num_colors", int, None, "Number of colors in the range.", minimum=2),
+        Opt(
+            "type",
+            str,
+            None,
+            "Plot scale type. Defaults to the scale used to build the colormap.",
+        ),
+        Opt("pivot", float, None, "Pivot value for diverging scales."),
+        Opt("symmetric", bool, None, "Whether a diverging scale is symmetric."),
+    )
 
     @property
     def identifier(self) -> str:
@@ -20,28 +49,25 @@ class ObservablePlotExporter(BaseExporter):
         return "Observable Plot Scale"
 
     @property
-    def default_file_extension(self) -> Optional[str]:
+    def default_file_extension(self) -> str:
         return "json"
 
-    def _get_interpolate_method(self, space: str) -> str:
-        """Maps a coloraide space to a d3-interpolate method name."""
+    def _interpolate_method(self, space: str) -> str:
+        """Map a ColorAide space onto the closest d3-interpolate method."""
         space = space.lower()
-        if space == "srgb":
-            return "d3.interpolateRgb"
-        if space == "lab":
-            return "d3.interpolateLab"
-        if space in ["hcl", "oklch"]:
-            if space == "oklch":
-                warnings.warn(
-                    "`oklch` space is approximated by `d3.interpolateHcl`.", UserWarning
-                )
-            return "d3.interpolateHcl"
-
-        warnings.warn(
-            f"Unsupported interpolation space '{space}'. Defaulting to 'd3.interpolateRgb'.",
-            UserWarning,
-        )
-        return "d3.interpolateRgb"
+        if space == "oklch":
+            warnings.warn(
+                "`oklch` space is approximated by `d3.interpolateHcl`.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif space not in _D3_INTERPOLATORS:
+            warnings.warn(
+                f"Unsupported interpolation space '{space}'. Defaulting to 'd3.interpolateRgb'.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return _D3_INTERPOLATORS.get(space, "d3.interpolateRgb")
 
     def export(
         self,
@@ -49,54 +75,39 @@ class ObservablePlotExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
-        opts = options or {}
+        opts = self.resolve_options(options)
+        raw = options or {}
 
-        # Get scale type from options
-        scaler_name = opts.get("scale_type", "linear")
-
-        # Determine Observable Plot scale type
-        scale_type_map = {"power": "pow"}
-        scale_type = scale_type_map.get(scaler_name, scaler_name)
-        if scaler_name == "symlog":
+        scale_name = raw.get("scale_type", "linear")
+        scale_type = {"power": "pow"}.get(scale_name, scale_name)
+        if scale_name == "symlog":
             scale_type = "linear"
             warnings.warn(
                 "`symlog` scale is not supported by Observable Plot. Defaulting to `linear` scale.",
                 UserWarning,
+                stacklevel=2,
             )
 
-        result: Dict[str, Any] = {
-            "type": opts.get("type", scale_type),
+        result: dict[str, Any] = {
+            "type": opts["type"] or scale_type,
             "domain": [domain_min, domain_max],
-            "interpolate": self._get_interpolate_method(colormap.interpolation_space),
+            "interpolate": self._interpolate_method(colormap.interpolation_space),
             "clamp": True,
         }
 
-        # Generate the color range based on --steps if provided
-        num_steps = opts.get("num_colors")
-        if num_steps:
-            color_range = []
-            for i in range(num_steps):
-                position = i / (num_steps - 1) if num_steps > 1 else 0.0
-                color_range.append(colormap.get_color(position, output_format="hex"))
-            result["range"] = color_range
+        num_colors = opts["num_colors"]
+        if num_colors:
+            result["range"] = colormap.hex_colors(num_colors)
         else:
-            # Fallback to using the original stops
-            result["range"] = [
-                stop.parsed_color.convert("srgb").to_string(hex=True)
-                for stop in colormap.stops
-            ]
+            # Without an explicit count, fall back to the colormap's own stops.
+            result["range"] = [stop.to_hex() for stop in colormap.stops]
 
-        # Handle diverging scales
         if result["type"] == "diverging":
-            if "pivot" in opts:
-                result["pivot"] = float(opts["pivot"])
-            if "symmetric" in opts:
-                result["symmetric"] = str(opts["symmetric"]).lower() in [
-                    "true",
-                    "1",
-                    "yes",
-                ]
+            if opts["pivot"] is not None:
+                result["pivot"] = opts["pivot"]
+            if opts["symmetric"] is not None:
+                result["symmetric"] = opts["symmetric"]
 
         return json.dumps(result, indent=2)
