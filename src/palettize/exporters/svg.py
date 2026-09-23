@@ -1,16 +1,40 @@
 """Exporter for SVG gradient elements."""
 
-from typing import Any, Dict, Optional
-from xml.sax.saxutils import escape
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, ClassVar
+from xml.sax.saxutils import escape, quoteattr
 
 from palettize.core import Colormap, ScalingFunction
-from ._base import BaseExporter
+
+from ._base import NUM_COLORS_OPT, BaseExporter
+from ._options import Opt, OptionSpec
 
 
 class SVGExporter(BaseExporter):
-    """
-    Exporter for SVG gradient elements.
-    """
+    """SVG ``<linearGradient>`` / ``<radialGradient>`` definitions."""
+
+    options: ClassVar[OptionSpec] = OptionSpec(
+        NUM_COLORS_OPT,
+        Opt(
+            "gradient_type",
+            str,
+            "linear",
+            "Gradient element to emit.",
+            choices=("linear", "radial"),
+        ),
+        Opt("gradient_id", str, "palette", "id attribute of the gradient element."),
+        Opt("include_defs", bool, True, "Wrap the gradient in a <defs> element."),
+        Opt("full_svg", bool, False, "Emit a complete SVG document with a preview shape."),
+        Opt("x1", str, "0%", "Linear gradient start x."),
+        Opt("y1", str, "0%", "Linear gradient start y."),
+        Opt("x2", str, "100%", "Linear gradient end x."),
+        Opt("y2", str, "0%", "Linear gradient end y."),
+        Opt("cx", str, "50%", "Radial gradient center x."),
+        Opt("cy", str, "50%", "Radial gradient center y."),
+        Opt("r", str, "50%", "Radial gradient radius."),
+    )
 
     @property
     def identifier(self) -> str:
@@ -30,97 +54,54 @@ class SVGExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
-        """
-        Exports the colormap to an SVG gradient element.
+        opts = self.resolve_options(options)
+        num_colors = opts["num_colors"]
 
-        Accepted options:
-            num_colors (int): Number of color stops to generate. Default 256.
-            gradient_type (str): Type of gradient. Options:
-                - "linear" (default): linearGradient element
-                - "radial": radialGradient element
-            gradient_id (str): ID for the gradient element. Default "palette".
-            include_defs (bool): Wrap in <defs> element. Default True.
-            full_svg (bool): Output complete SVG with preview rectangle. Default False.
-            x1, y1, x2, y2 (str): Gradient coordinates for linear gradients.
-                Defaults: x1="0%", y1="0%", x2="100%", y2="0%" (horizontal)
-            cx, cy, r (str): Gradient coordinates for radial gradients.
-                Defaults: cx="50%", cy="50%", r="50%"
-        """
-        options = options or {}
-        num_colors = options.get("num_colors", 256)
-        gradient_type = options.get("gradient_type", "linear")
-        gradient_id = options.get("gradient_id", "palette")
-        include_defs = options.get("include_defs", True)
-        full_svg = options.get("full_svg", False)
-
-        # Linear gradient coordinates
-        x1 = options.get("x1", "0%")
-        y1 = options.get("y1", "0%")
-        x2 = options.get("x2", "100%")
-        y2 = options.get("y2", "0%")
-
-        # Radial gradient coordinates
-        cx = options.get("cx", "50%")
-        cy = options.get("cy", "50%")
-        r = options.get("r", "50%")
-
-        if not isinstance(num_colors, int):
-            raise ValueError("Option 'num_colors' must be an integer.")
-        if num_colors < 2:
-            raise ValueError("Number of colors must be at least 2.")
-        if gradient_type not in ("linear", "radial"):
-            raise ValueError(
-                f"Invalid gradient_type '{gradient_type}'. Supported: linear, radial"
+        stops = "\n".join(
+            f'    <stop offset="{position * 100:.2f}%" stop-color="{color}"/>'
+            for position, color in zip(
+                self.sample_positions(num_colors),
+                colormap.hex_colors(num_colors),
+                strict=True,
             )
+        )
 
-        # Generate color stops
-        stops = []
-        for i in range(num_colors):
-            position = i / (num_colors - 1)
-            hex_color = colormap.get_color(position, output_format="hex")
-            offset_pct = f"{position * 100:.2f}%"
-            stops.append(f'    <stop offset="{offset_pct}" stop-color="{hex_color}"/>')
-
-        stops_str = "\n".join(stops)
-
-        # Build gradient element
-        safe_id = escape(gradient_id)
-        if gradient_type == "linear":
+        gradient_id = opts["gradient_id"]
+        # quoteattr escapes quotes inside the reference; escape() alone would
+        # leave `fill="url(#a"b)"` as broken markup.
+        fill_ref = quoteattr(f"url(#{gradient_id})")
+        if opts["gradient_type"] == "linear":
+            coords = " ".join(f"{k}={quoteattr(str(opts[k]))}" for k in ("x1", "y1", "x2", "y2"))
             gradient = (
-                f'  <linearGradient id="{safe_id}" '
-                f'x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">\n'
-                f'{stops_str}\n'
-                f'  </linearGradient>'
+                f"  <linearGradient id={quoteattr(gradient_id)} {coords}>\n"
+                f"{stops}\n"
+                f"  </linearGradient>"
             )
-        else:  # radial
-            gradient = (
-                f'  <radialGradient id="{safe_id}" '
-                f'cx="{cx}" cy="{cy}" r="{r}">\n'
-                f'{stops_str}\n'
-                f'  </radialGradient>'
-            )
-
-        # Wrap in defs if requested
-        if include_defs:
-            content = f"<defs>\n{gradient}\n</defs>"
         else:
-            content = gradient
+            coords = " ".join(f"{k}={quoteattr(str(opts[k]))}" for k in ("cx", "cy", "r"))
+            gradient = (
+                f"  <radialGradient id={quoteattr(gradient_id)} {coords}>\n"
+                f"{stops}\n"
+                f"  </radialGradient>"
+            )
 
-        # Full SVG with preview
-        if full_svg:
-            palette_name = colormap.name or "palette"
-            if gradient_type == "linear":
-                preview_rect = f'<rect x="0" y="0" width="400" height="50" fill="url(#{safe_id})"/>'
+        content = f"<defs>\n{gradient}\n</defs>" if opts["include_defs"] else gradient
+
+        if opts["full_svg"]:
+            if opts["gradient_type"] == "linear":
+                shape = f'<rect x="0" y="0" width="400" height="50" fill={fill_ref}/>'
             else:
-                preview_rect = f'<circle cx="200" cy="100" r="100" fill="url(#{safe_id})"/>'
-
-            content = f'''<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
-  <title>{escape(palette_name)}</title>
-{content}
-  {preview_rect}
-</svg>'''
+                shape = f'<circle cx="200" cy="100" r="100" fill={fill_ref}/>'
+            title = escape(colormap.name or "palette")
+            content = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">\n'
+                f"  <title>{title}</title>\n"
+                f"{content}\n"
+                f"  {shape}\n"
+                "</svg>"
+            )
 
         return content

@@ -1,15 +1,41 @@
 """Exporter for GIMP Palette (.gpl) format."""
 
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, ClassVar
 
 from palettize.core import Colormap, ScalingFunction
-from ._base import BaseExporter
+from palettize.exceptions import ExporterOptionError
+
+from ._base import NUM_COLORS_OPT, BaseExporter
+from ._options import Opt, OptionSpec
+
+
+def _parse_palette_name(value: Any) -> str:
+    text = str(value)
+    if "\n" in text or "\r" in text:
+        raise ExporterOptionError(
+            f"Option 'palette_name' must not contain newlines. Got: {value!r}"
+        )
+    return text
 
 
 class GIMPExporter(BaseExporter):
-    """
-    Exporter for GIMP Palette (.gpl) format.
-    """
+    """GIMP Palette (``.gpl``) files, also read by Inkscape and Krita."""
+
+    options: ClassVar[OptionSpec] = OptionSpec(
+        NUM_COLORS_OPT,
+        Opt(
+            "palette_name",
+            str,
+            None,
+            "Palette name. Defaults to the colormap name, or 'Untitled'.",
+            parser=_parse_palette_name,
+        ),
+        Opt("columns", int, 16, "Swatch columns to display in GIMP.", minimum=0),
+        Opt("color_names", bool, True, "Append a 'color-{index}' name to each entry."),
+    )
 
     @property
     def identifier(self) -> str:
@@ -29,53 +55,32 @@ class GIMPExporter(BaseExporter):
         scaler: ScalingFunction,
         domain_min: float,
         domain_max: float,
-        options: Optional[Dict[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> str:
+        """Export as a GIMP palette.
+
+        The format is a short header followed by one ``R G B<tab>name`` line
+        per color::
+
+            GIMP Palette
+            Name: Viridis
+            Columns: 16
+            #
+             68  1  84	color-0
         """
-        Exports the colormap to GIMP Palette (.gpl) format.
-
-        The GIMP Palette format is a simple text format:
-        ```
-        GIMP Palette
-        Name: Palette Name
-        Columns: 16
-        #
-        R G B    color-name
-        ```
-
-        Accepted options:
-            num_colors (int): Number of color steps to generate. Default 256.
-            palette_name (str): Name of the palette. Default uses colormap name or "Untitled".
-            columns (int): Number of columns for display in GIMP. Default 16.
-            color_names (bool): Include color names. Default True.
-                Names are formatted as "color-{index}".
-        """
-        options = options or {}
-        num_colors = options.get("num_colors", 256)
-        palette_name = options.get("palette_name", colormap.name or "Untitled")
-        columns = options.get("columns", 16)
-        color_names = options.get("color_names", True)
-
-        if not isinstance(num_colors, int):
-            raise ValueError("Option 'num_colors' must be an integer.")
-        if num_colors < 2:
-            raise ValueError("Number of colors must be at least 2.")
+        opts = self.resolve_options(options)
+        palette_name = opts["palette_name"] or colormap.name or "Untitled"
+        if "\n" in palette_name or "\r" in palette_name:
+            raise ExporterOptionError("Option 'palette_name' must not contain newlines.")
 
         lines = [
             "GIMP Palette",
             f"Name: {palette_name}",
-            f"Columns: {columns}",
+            f"Columns: {opts['columns']}",
             "#",
         ]
-
-        for i in range(num_colors):
-            position = i / (num_colors - 1)
-            r, g, b = colormap.get_color(position, output_format="rgb_tuple")
-
-            # GIMP format: "R G B\tcolor-name" with spaces for alignment
-            if color_names:
-                lines.append(f"{r:3d} {g:3d} {b:3d}\tcolor-{i}")
-            else:
-                lines.append(f"{r:3d} {g:3d} {b:3d}")
+        for i, (r, g, b) in enumerate(colormap.rgb_colors(opts["num_colors"])):
+            entry = f"{r:3d} {g:3d} {b:3d}"
+            lines.append(f"{entry}\tcolor-{i}" if opts["color_names"] else entry)
 
         return "\n".join(lines)
