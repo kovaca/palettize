@@ -1,37 +1,29 @@
 """Domain-to-range scaling functions for Palettize."""
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 ScalingFunction = Callable[[float], float]
 
 
-def linear_scale(
-    value: float, domain_min: float, domain_max: float, clamp: bool = True
-) -> float:
+def linear_scale(value: float, domain_min: float, domain_max: float, clamp: bool = True) -> float:
     """
     Performs linear scaling of a value from a given domain to the range [0, 1].
     """
     if domain_min == domain_max:
-        raise ValueError(
-            "domain_min and domain_max cannot be equal for linear scaling."
-        )
+        raise ValueError("domain_min and domain_max cannot be equal for linear scaling.")
     normalized_value = (value - domain_min) / (domain_max - domain_min)
     if clamp:
         return max(0.0, min(1.0, normalized_value))
     return normalized_value
 
 
-def get_linear_scaler(
-    domain_min: float, domain_max: float, clamp: bool = True
-) -> ScalingFunction:
+def get_linear_scaler(domain_min: float, domain_max: float, clamp: bool = True) -> ScalingFunction:
     """
     Returns a linear scaling function configured with the given domain.
     """
     if domain_min == domain_max:
-        raise ValueError(
-            "domain_min and domain_max cannot be equal for get_linear_scaler."
-        )
+        raise ValueError("domain_min and domain_max cannot be equal for get_linear_scaler.")
 
     def scaler(value: float) -> float:
         return linear_scale(value, domain_min, domain_max, clamp)
@@ -62,16 +54,11 @@ def power_scale(
             effective_normalized_base = 1.0
         else:
             effective_normalized_base = normalized_base
-        scaled_value = effective_normalized_base**exponent
-        return max(0.0, min(1.0, scaled_value))
-    else:
-        scaled_value = normalized_base**exponent
-        return scaled_value
+        return max(0.0, min(1.0, float(effective_normalized_base**exponent)))
+    return float(normalized_base**exponent)
 
 
-def sqrt_scale(
-    value: float, domain_min: float, domain_max: float, clamp: bool = True
-) -> float:
+def sqrt_scale(value: float, domain_min: float, domain_max: float, clamp: bool = True) -> float:
     """Square root scaling. Equivalent to power_scale with exponent 0.5."""
     return power_scale(value, domain_min, domain_max, 0.5, clamp)
 
@@ -81,9 +68,7 @@ def get_power_scaler(
 ) -> ScalingFunction:
     """Returns a power scaling function."""
     if domain_min == domain_max:
-        raise ValueError(
-            "domain_min and domain_max cannot be equal for get_power_scaler."
-        )
+        raise ValueError("domain_min and domain_max cannot be equal for get_power_scaler.")
 
     def scaler(value: float) -> float:
         return power_scale(value, domain_min, domain_max, exponent, clamp)
@@ -91,9 +76,7 @@ def get_power_scaler(
     return scaler
 
 
-def get_sqrt_scaler(
-    domain_min: float, domain_max: float, clamp: bool = True
-) -> ScalingFunction:
+def get_sqrt_scaler(domain_min: float, domain_max: float, clamp: bool = True) -> ScalingFunction:
     """Returns a square root scaling function."""
     return get_power_scaler(domain_min, domain_max, 0.5, clamp)
 
@@ -111,13 +94,9 @@ def log_scale(
     if base <= 0 or base == 1:
         raise ValueError("Logarithm base must be > 0 and not equal to 1.")
     if domain_min <= 0 or domain_max <= 0:
-        raise ValueError(
-            "Logarithmic scale domain (domain_min, domain_max) must be positive."
-        )
+        raise ValueError("Logarithmic scale domain (domain_min, domain_max) must be positive.")
     if domain_min >= domain_max:
-        raise ValueError(
-            "domain_min must be less than domain_max for logarithmic scaling."
-        )
+        raise ValueError("domain_min must be less than domain_max for logarithmic scaling.")
 
     log_domain_min = math.log(domain_min, base)
     log_domain_max = math.log(domain_max, base)
@@ -128,9 +107,7 @@ def log_scale(
         if value >= domain_max:
             return 1.0
         if value <= 0:  # Should be caught by value <= domain_min if domain_min > 0
-            raise ValueError(
-                "Input value for clamped log_scale must be positive within domain."
-            )
+            raise ValueError("Input value for clamped log_scale must be positive within domain.")
         log_value = math.log(value, base)
         scaled_value = (log_value - log_domain_min) / (log_domain_max - log_domain_min)
         return max(0.0, min(1.0, scaled_value))
@@ -138,9 +115,7 @@ def log_scale(
         if value <= 0:
             raise ValueError("Input value for non-clamped log_scale must be positive.")
         log_value = math.log(value, base)
-        if (
-            log_domain_max - log_domain_min
-        ) == 0:  # Should be caught by domain_min >= domain_max
+        if (log_domain_max - log_domain_min) == 0:  # Should be caught by domain_min >= domain_max
             raise ValueError("Log-transformed domain has zero range.")
         return (log_value - log_domain_min) / (log_domain_max - log_domain_min)
 
@@ -152,13 +127,9 @@ def get_log_scaler(
     if base <= 0 or base == 1:
         raise ValueError("Logarithm base must be > 0 and not equal to 1.")
     if domain_min <= 0 or domain_max <= 0:
-        raise ValueError(
-            "Logarithmic scale domain (domain_min, domain_max) must be positive."
-        )
+        raise ValueError("Logarithmic scale domain (domain_min, domain_max) must be positive.")
     if domain_min >= domain_max:
-        raise ValueError(
-            "domain_min must be less than domain_max for logarithmic scaling."
-        )
+        raise ValueError("domain_min must be less than domain_max for logarithmic scaling.")
 
     log_domain_min = math.log(domain_min, base)
     log_domain_max = math.log(domain_max, base)
@@ -258,16 +229,12 @@ def symlog_scale(
             return 1.0
         # If value is within domain, then proceed with transform and scale
         transformed_value = _symlog_transform(value, linthresh, base)
-        scaled_output = (transformed_value - transformed_min) / (
-            transformed_max - transformed_min
-        )
+        scaled_output = (transformed_value - transformed_min) / (transformed_max - transformed_min)
         return max(0.0, min(1.0, scaled_output))  # Final safety clamp
     else:
         # No clamping, allow extrapolation
         transformed_value = _symlog_transform(value, linthresh, base)
-        return (transformed_value - transformed_min) / (
-            transformed_max - transformed_min
-        )
+        return (transformed_value - transformed_min) / (transformed_max - transformed_min)
 
 
 def get_symlog_scaler(

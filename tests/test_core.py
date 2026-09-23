@@ -44,6 +44,13 @@ class TestParseInputColor:
         assert abs(coords[2] - 0.0) < 0.01
         assert abs(color.alpha() - 0.5) < 0.01
 
+    def test_rgba_tuple_keeps_unit_alpha_when_rgb_is_bytes(self):
+        """(128, 64, 32, 0.5) is byte RGB with a 0-1 alpha, not alpha/255."""
+        color = parse_input_color((128, 64, 32, 0.5))
+        coords = color.coords(nans=False)
+        assert abs(coords[0] - 128 / 255) < 0.01
+        assert abs(color.alpha() - 0.5) < 0.01
+
     def test_coloraide_object(self):
         """Test passing a ColorAide Color object."""
         input_color = Color("oklch", [0.7, 0.15, 30])
@@ -190,11 +197,11 @@ class TestColormap:
 
         # Red at start (approximately 255, 0, 0) - allow tolerance for color space math
         assert start_color[0] >= 250  # Red channel high
-        assert start_color[2] <= 5    # Blue channel low
+        assert start_color[2] <= 5  # Blue channel low
 
         # Blue at end (approximately 0, 0, 255)
-        assert end_color[0] <= 5      # Red channel low
-        assert end_color[2] >= 250    # Blue channel high
+        assert end_color[0] <= 5  # Red channel low
+        assert end_color[2] >= 250  # Blue channel high
 
     def test_apply_scaler(self):
         """Test applying a scaler to get colors."""
@@ -309,8 +316,12 @@ class TestNewOutputFormats:
     def test_output_space_parameter(self, red_blue_colormap):
         """Test output_space parameter affects output."""
         # Both should return valid colors
-        srgb_color = red_blue_colormap.get_color(0.5, output_format="rgb_float", output_space="srgb")
-        p3_color = red_blue_colormap.get_color(0.5, output_format="rgb_float", output_space="display-p3")
+        srgb_color = red_blue_colormap.get_color(
+            0.5, output_format="rgb_float", output_space="srgb"
+        )
+        p3_color = red_blue_colormap.get_color(
+            0.5, output_format="rgb_float", output_space="display-p3"
+        )
 
         # Both should be tuples of 3 floats
         assert len(srgb_color) == 3

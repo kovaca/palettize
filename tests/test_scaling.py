@@ -1,7 +1,5 @@
 """Tests for palettize.scaling module."""
 
-import math
-
 import pytest
 
 from palettize.scaling import (
