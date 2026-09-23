@@ -7,12 +7,19 @@ wheels/
 *.egg-info
 .pytest_cache/
 .coverage
+coverage.xml
+htmlcov/
 
 # Virtual environments
 .venv
 .ruff_cache/
+.mypy_cache/
 .cursor
 /project_docs/
 .DS_Store
+
+# Docs site build output
 .astro/
 node_modules/
+docs/dist/
+docs/.pagefind/
