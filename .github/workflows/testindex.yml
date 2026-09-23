@@ -6,14 +6,23 @@ permissions:
   contents: read
   id-token: write
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     environment: testpypi
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - uses: astral-sh/setup-uv@v5
-    - run: uv build
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Verify the built CLI runs
+        run: uv run --isolated --no-project --with dist/*.whl palettize --version
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
