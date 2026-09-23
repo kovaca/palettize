@@ -96,19 +96,19 @@ Returns the interpolated color at a position (0-1) in the specified format.
 cmap = create_colormap(preset="viridis")
 
 # Hex string (default)
-hex_color = cmap.get_color(0.5)  # "#21918c"
+hex_color = cmap.get_color(0.5)  # "#21918d"
 
 # RGB tuple (0-255)
-rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 140)
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 141)
 
 # RGBA tuple (0-255)
-rgba = cmap.get_color(0.5, output_format="rgba_tuple")  # (33, 145, 140, 255)
+rgba = cmap.get_color(0.5, output_format="rgba_tuple")  # (33, 145, 141, 255)
 
 # RGB float (0-1) - useful for OpenGL, matplotlib
 rgb_float = cmap.get_color(0.5, output_format="rgb_float")  # (0.129, 0.567, 0.551)
 
 # HSL tuple and string
-hsl = cmap.get_color(0.5, output_format="hsl_tuple")  # (178.0, 62.8, 34.8)
+hsl = cmap.get_color(0.5, output_format="hsl_tuple")  # (177.9, 62.8, 34.8)
 hsl_str = cmap.get_color(0.5, output_format="hsl_string")  # "hsl(178, 63%, 35%)"
 
 # OKLCH string (modern CSS)
@@ -123,18 +123,18 @@ p3 = cmap.get_color(0.5, output_format="css_color", output_space="display-p3")
 |-----------|------|---------|-------------|
 | `position` | `float` | | Position in colormap (0-1) |
 | `output_format` | `str` | `"hex"` | Output format (see table below) |
-| `output_space` | `str` | `"srgb"` | Color space: `"srgb"` or `"display-p3"` |
+| `output_space` | `str` | `"srgb"` | `"srgb"` or `"display-p3"`. Affects `rgb_*`, `rgba_*`, and `css_color`. Hex is always sRGB |
 
 #### Output Formats
 
 | Format | Return Type | Example | Use Case |
 |--------|-------------|---------|----------|
-| `hex` | `str` | `"#21918c"` | CSS, general purpose |
-| `rgb_tuple` | `tuple[int, ...]` | `(33, 145, 140)` | Image processing |
-| `rgba_tuple` | `tuple[int, ...]` | `(33, 145, 140, 255)` | Image processing with alpha |
+| `hex` | `str` | `"#21918d"` | CSS, general purpose. Always sRGB |
+| `rgb_tuple` | `tuple[int, ...]` | `(33, 145, 141)` | Image processing |
+| `rgba_tuple` | `tuple[int, ...]` | `(33, 145, 141, 255)` | Image processing with alpha |
 | `rgb_float` | `tuple[float, ...]` | `(0.129, 0.567, 0.551)` | OpenGL, matplotlib, scientific |
 | `rgba_float` | `tuple[float, ...]` | `(0.129, 0.567, 0.551, 1.0)` | OpenGL with alpha |
-| `hsl_tuple` | `tuple[float, ...]` | `(178.0, 62.8, 34.8)` | Color manipulation |
+| `hsl_tuple` | `tuple[float, ...]` | `(177.9, 62.8, 34.8)` | Color manipulation |
 | `hsl_string` | `str` | `"hsl(178, 63%, 35%)"` | CSS HSL |
 | `oklch_string` | `str` | `"oklch(59.5% 0.095 191.2)"` | Modern CSS, perceptual |
 | `css_color` | `str` | `"color(display-p3 ...)"` | Wide gamut CSS |
@@ -203,6 +203,45 @@ color_pos = cmap.apply_scaler(50, scaler)    # Red-ish
 | `interpolation_space` | `str` | Color interpolation space |
 | `cut_start` | `float` | Start of sub-segment (0-1) |
 | `cut_end` | `float` | End of sub-segment (0-1) |
+
+Calling a colormap returns a hex string: `cmap(0.5)`. `len(cmap)` is the number of stops.
+
+## Sampling
+
+```python
+cmap.hex_colors(5)   # ['#440154', '#3b528b', '#21918d', '#5cc863', '#fde725']
+cmap.rgb_colors(5)
+cmap.rgba_colors(5)
+cmap.hsl_colors(5)
+cmap.colors(5, "rgb_float")
+```
+
+## Transforms
+
+Each method returns a new colormap. Cuts compose, and `reversed()` toggles an `_r` suffix on the name, as matplotlib does.
+
+```python
+from palettize import Colormap
+
+viridis = Colormap.from_preset("viridis")
+viridis.reversed()
+viridis.cut(0.2, 0.8)
+viridis.resampled(11)     # refit to 11 evenly spaced stops
+viridis.quantized(5)      # 5 hard-edged bands
+viridis.blend(Colormap.from_preset("magma"), 0.5)
+viridis + Colormap.from_preset("magma")   # concat
+```
+
+`renamed("My Map")` returns a copy with a new name. See the [transforms guide](/palettize/guides/transforms/).
+
+## Save and Load
+
+```python
+viridis.reversed().save("my-map.json")
+Colormap.load("my-map.json")
+```
+
+Files record schema version `1`. A newer schema is refused. See [colormap files](/palettize/guides/colormap-files/).
 
 ## ColorStop
 

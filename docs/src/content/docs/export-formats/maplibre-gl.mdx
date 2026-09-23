@@ -82,7 +82,7 @@ import { createColormap, getScalerByName, getExporter } from 'palettize';
 
 // Or load the exported JSON
 const colorExpression = ["interpolate", ["linear"], ["get", "value"],
-    0, "#440154", 128, "#21918c", 255, "#fde725"];
+    0, "#440154", 128, "#21918d", 255, "#fde725"];
 
 map.addLayer({
     id: 'data-layer',
@@ -170,5 +170,5 @@ palettize create viridis -f mapgl -o style.json --domain 0,1 \
 
 Output:
 ```json
-["interpolate", ["linear"], ["get", "value"], 0, "#440154", 0.25, "#482878", 0.5, "#21918c", 0.75, "#5ec962", 1, "#fde725"]
+["interpolate", ["linear"], ["get", "value"], 0, "#440154", 0.25, "#482878", 0.5, "#21918d", 0.75, "#5cc863", 1, "#fde725"]
 ```

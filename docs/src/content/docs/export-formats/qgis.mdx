@@ -40,7 +40,7 @@ palettize create viridis -f qgis -o viridis.xml --steps 11
 palettize create viridis -f qgis -o viridis.xml -O ramp_type=exact
 
 # With tags
-palettize create viridis -f qgis -o viridis.xml -O "tags=scientific;perceptual"
+palettize create viridis -f qgis -o viridis.xml -O "tags=scientific,perceptual"
 ```
 
 ## Python Usage
@@ -71,12 +71,11 @@ output = exporter.export(
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `num_colors` | `int` | `256` | Number of color steps for gradient ramps |
-| `ramp_type` | `str` | `"gradient"` | Ramp type: `"gradient"`, `"exact"`, `"approximate"` |
-| `name` | `str` | | Name for the color ramp |
-| `tags` | `list[str]` | | Tags for organizing ramps |
-| `discrete` | `bool` | `False` | Whether stops are discrete (for exact/approximate) |
-| `color_space` | `str` | | QGIS color space hint |
+| `ramp_type` | `str` | `"gradient"` | `"gradient"`, `"exact"`, or `"approximate"`. Only `gradient` uses `--scale` |
+| `name` | `str` | (unset) | Ramp name. Defaults to the colormap name |
+| `tags` | `list` | (unset) | Comma-separated tags. On the CLI: `-O tags=scientific,perceptual` |
 | `opacity` | `float` | `1.0` | Overall opacity (0.0-1.0) |
+| `color_space` | `str` | (unset) | QGIS `colorSpace` attribute hint, e.g. `RGB` |
 
 ## Ramp Types
 

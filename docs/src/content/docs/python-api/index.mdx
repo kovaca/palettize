@@ -20,8 +20,8 @@ from palettize import create_colormap, get_scaler_by_name
 cmap = create_colormap(preset="viridis", name="Viridis")
 
 # Get a color at a specific position (0-1)
-hex_color = cmap.get_color(0.5)  # "#21918c"
-rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 140)
+hex_color = cmap.get_color(0.5)  # "#21918d"
+rgb = cmap.get_color(0.5, output_format="rgb_tuple")  # (33, 145, 141)
 
 # Create from custom colors
 cmap2 = create_colormap(
@@ -65,7 +65,11 @@ The `palettize` package exports the following:
 | Export | Description |
 |--------|-------------|
 | `list_available_presets()` | List all available preset names |
+| `search_presets()` | Filter by name, category, or publisher |
+| `get_preset_info()` | Metadata for one preset |
+| `list_categories()` | Category names used by `search_presets` |
 | `load_preset_data()` | Load raw preset data |
+| `PresetInfo` | Metadata record returned by preset search |
 
 ### Exporters
 
@@ -75,6 +79,25 @@ The `palettize` package exports the following:
 | [`list_available_exporters()`](/palettize/python-api/exporters/#list_available_exporters) | List all available exporters |
 | [`register_exporter()`](/palettize/python-api/exporters/#register_exporter) | Register a custom exporter |
 | `load_plugin_exporters()` | Load exporters from plugins |
+| `BaseExporter` | Base class for a custom exporter |
+| `Opt` / `OptionSpec` | Declarative option schema (`palettize formats` reads this) |
+
+### Analysis
+
+| Export | Description |
+|--------|-------------|
+| `analyze()` | Lightness, ΔE2000 uniformity, and color-vision simulation |
+| `ColormapAnalysis` | The report `analyze()` returns |
+| `simulate_cvd()` | Simulate one color under a color-vision deficiency |
+
+### Rendering
+
+| Export | Description |
+|--------|-------------|
+| `write_image()` | Write a `.png` or `.svg` preview |
+| `png_bytes()` | PNG bytes, with no Pillow dependency |
+| `svg_document()` | Standalone SVG document |
+| `terminal_swatch()` | Rich text swatch for the terminal |
 
 ## Example: Full Workflow
 
@@ -121,3 +144,23 @@ output = exporter.export(
 )
 print(output)
 ```
+
+## Transforms, Analysis, and Files
+
+Transforms return a new colormap. `analyze` does not modify one. A saved file reloads through `Colormap.load` and can be passed to any command that accepts a preset name.
+
+```python
+from palettize import Colormap, analyze, write_image
+
+cmap = Colormap.from_preset("viridis").cut(0.2, 0.8).reversed()
+cmap.save("my-map.json")
+
+report = analyze(cmap)
+report.lightness.shape       # "sequential"
+report.uniformity.is_uniform
+report.warnings              # plain-language problems; empty when clean
+
+write_image(cmap, "preview.png")
+```
+
+See [Colormap](/palettize/python-api/colormap/) for the transform methods, and the [transforms](/palettize/guides/transforms/) and [colormap files](/palettize/guides/colormap-files/) guides.

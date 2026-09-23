@@ -94,13 +94,13 @@ output = exporter.export(
 
 ## Common Options
 
-Most exporters support these common options:
+`num_colors` is accepted by almost every format. `precision` is read by `gdal` and `mapgl` only. Unknown `-O` keys produce a warning and are otherwise ignored. Run `palettize formats <name>` for the options a format actually declares.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `num_colors` | `int` | varies | Number of discrete color steps |
-| `precision` | `int` | varies | Decimal places for numbers |
-| `name` | `str` | | Colormap name in output metadata |
+| `num_colors` | `int` | varies | Number of color steps |
+| `precision` | `int` | (unset) | Decimal places for data values (`gdal`, `mapgl`) |
+| `name` | `str` | | Colormap name for output metadata |
 
 ### Passing Options via CLI
 

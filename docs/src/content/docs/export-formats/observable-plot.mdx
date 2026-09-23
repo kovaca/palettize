@@ -70,7 +70,7 @@ scale_def = json.loads(output)
 |--------|------|---------|-------------|
 | `num_colors` | `int` | | Number of colors in the range |
 | `scale_type` | `str` | | Scale type passed from CLI |
-| `type` | `str` | `"linear"` | Observable scale type: `"linear"`, `"pow"`, `"sqrt"`, `"log"`, `"symlog"`, `"diverging"` |
+| `type` | `str` | (unset) | Plot scale type. When unset, follows `--scale` (`power` becomes `pow`). `symlog` is not a Plot type and falls back to `linear` with a warning |
 | `pivot` | `float` | | Pivot point for diverging scales |
 | `symmetric` | `bool` | | Whether diverging scale is symmetric |
 
@@ -120,7 +120,7 @@ palettize create viridis -f observable -o scale.json --domain 0,100 \
 const scaleConfig = {
   "type": "linear",
   "domain": [0, 100],
-  "range": ["#440154", "#21918c", "#fde725"],
+  "range": ["#440154", "#21918d", "#fde725"],
   "interpolate": "d3.interpolateRgb"
 };
 
@@ -145,7 +145,7 @@ import * as d3 from "d3";
 const scaleConfig = {
   "type": "linear",
   "domain": [0, 100],
-  "range": ["#440154", "#21918c", "#fde725"]
+  "range": ["#440154", "#21918d", "#fde725"]
 };
 
 const colorScale = d3.scaleLinear()

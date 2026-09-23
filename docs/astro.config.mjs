@@ -7,7 +7,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Palettize',
-      description: 'A Python CLI tool for generating, previewing, and exporting colormaps for GIS and web mapping.',
+      description: 'A Python CLI and library for previewing, checking, and exporting colormaps.',
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/kovaca/palettize' },
       ],
@@ -29,7 +29,9 @@ export default defineConfig({
           items: [
             { label: 'Overview', slug: 'cli' },
             { label: 'palettize show', slug: 'cli/show' },
+            { label: 'palettize analyze', slug: 'cli/analyze' },
             { label: 'palettize create', slug: 'cli/create' },
+            { label: 'palettize formats', slug: 'cli/formats' },
             { label: 'palettize list', slug: 'cli/list' },
             { label: 'palettize info', slug: 'cli/info' },
           ],
@@ -55,13 +57,20 @@ export default defineConfig({
             { label: 'MapLibre GL JS', slug: 'export-formats/maplibre-gl' },
             { label: 'Observable Plot', slug: 'export-formats/observable-plot' },
             { label: 'Google Earth Engine', slug: 'export-formats/gee' },
+            { label: 'CSS', slug: 'export-formats/css' },
+            { label: 'SVG', slug: 'export-formats/svg' },
+            { label: 'GIMP Palette', slug: 'export-formats/gimp' },
+            { label: 'JSON', slug: 'export-formats/json' },
             { label: 'Hex (Plaintext)', slug: 'export-formats/hex' },
             { label: 'RGBA (Plaintext)', slug: 'export-formats/rgba' },
+            { label: 'HSL (Plaintext)', slug: 'export-formats/hsl' },
           ],
         },
         {
           label: 'Guides',
           items: [
+            { label: 'Transforming Colormaps', slug: 'guides/transforms' },
+            { label: 'Colormap Files', slug: 'guides/colormap-files' },
             { label: 'Color Interpolation', slug: 'guides/color-interpolation' },
             { label: 'Data Scaling', slug: 'guides/data-scaling' },
             { label: 'Using Presets', slug: 'guides/presets' },

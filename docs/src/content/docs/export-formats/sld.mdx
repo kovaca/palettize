@@ -92,8 +92,8 @@ output = exporter.export(
 | `opacity` | `float` | | Global opacity (0.0-1.0), overrides stop alpha |
 | `layer_name` | `str` | `"palettize_layer"` | UserLayer name |
 | `style_name` | `str` | `"palettize_style"` | UserStyle name |
-| `geometry_type` | `str` | `"raster"` | Symbolizer type: `"raster"`, `"polygon"`, `"line"` |
-| `band` | `int` | | Band number for RasterSymbolizer |
+| `geometry_type` | `str` | `"raster"` | Symbolizer: `"raster"`, `"polygon"`, `"line"`, or `"point"` |
+| `band` | `int` | (unset) | Source band. Written only for SLD 1.1 |
 
 ## ColorMap Types
 
