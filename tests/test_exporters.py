@@ -9,6 +9,7 @@ import urllib.parse
 import pytest
 
 from palettize.core import Colormap, ColorStop
+from palettize.exceptions import ExporterOptionError
 from palettize.exporters import get_exporter, list_available_exporters
 from palettize.scaling import get_linear_scaler
 
@@ -57,9 +58,7 @@ class TestPlaintextExporters:
     def test_hex_exporter_basic(self, simple_colormap, linear_scaler):
         """Test hex exporter produces valid output."""
         exporter = get_exporter("hex")
-        output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 5}
-        )
+        output = exporter.export(simple_colormap, linear_scaler, 0, 100, options={"num_colors": 5})
         lines = output.strip().split("\n")
         assert len(lines) == 5
         # Each line should be a hex color
@@ -70,9 +69,7 @@ class TestPlaintextExporters:
     def test_rgba_exporter_basic(self, simple_colormap, linear_scaler):
         """Test rgba exporter produces valid output."""
         exporter = get_exporter("rgba")
-        output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 5}
-        )
+        output = exporter.export(simple_colormap, linear_scaler, 0, 100, options={"num_colors": 5})
         lines = output.strip().split("\n")
         assert len(lines) == 5
         # Each line should be rgba format
@@ -106,9 +103,7 @@ class TestTitilerExporter:
 
     def test_default_steps(self, titiler_exporter, blue_yellow_red_colormap, linear_scaler):
         """Test TiTiler exporter with default 11 steps."""
-        output = titiler_exporter.export(
-            blue_yellow_red_colormap, linear_scaler, 0, 100
-        )
+        output = titiler_exporter.export(blue_yellow_red_colormap, linear_scaler, 0, 100)
         decoded_payload = urllib.parse.parse_qs(output)
         colormap_json = json.loads(decoded_payload["colormap"][0])
         assert len(colormap_json) == 11
@@ -117,9 +112,7 @@ class TestTitilerExporter:
         assert colormap_json["128"].lower() == "#ffff00"  # Yellow
         assert colormap_json["255"].lower() == "#ff0000"  # Red
 
-    def test_custom_num_colors(
-        self, titiler_exporter, blue_yellow_red_colormap, linear_scaler
-    ):
+    def test_custom_num_colors(self, titiler_exporter, blue_yellow_red_colormap, linear_scaler):
         """Test TiTiler exporter with custom num_colors=5."""
         output = titiler_exporter.export(
             blue_yellow_red_colormap, linear_scaler, 0, 100, options={"num_colors": 5}
@@ -149,7 +142,7 @@ class TestTitilerExporter:
         self, titiler_exporter, blue_yellow_red_colormap, linear_scaler
     ):
         """Test that num_colors < 2 raises ValueError."""
-        with pytest.raises(ValueError, match="must be an integer >= 2"):
+        with pytest.raises(ValueError, match=r"'num_colors' must be >= 2"):
             titiler_exporter.export(
                 blue_yellow_red_colormap,
                 linear_scaler,
@@ -323,16 +316,30 @@ class TestGDALExporter:
         return get_linear_scaler(0, 100)
 
     def test_gdal_basic_output(self, gdal_exporter, simple_colormap, linear_scaler):
-        """Test GDAL exporter produces valid output."""
+        """GDAL output is comment-free by default: one nodata line plus N entries."""
         output = gdal_exporter.export(
             simple_colormap, linear_scaler, 0, 100, options={"num_colors": 5}
         )
         lines = output.strip().split("\n")
-        # Should have header comments and color entries
+        assert not any(line.startswith("#") for line in lines)
+        assert lines[0] == "nv 0 0 0 0"
+        assert len(lines) == 6  # nodata line + 5 colors
+
+    def test_gdal_verbose_adds_comment_header(self, gdal_exporter, simple_colormap, linear_scaler):
+        """The `verbose` option re-enables the descriptive comment header."""
+        output = gdal_exporter.export(
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 5, "verbose": True, "scale_type": "linear"},
+        )
+        lines = output.strip().split("\n")
         assert any(line.startswith("#") for line in lines)
-        # Should have at least 5 color entries (plus comments)
-        data_lines = [l for l in lines if not l.startswith("#")]
-        assert len(data_lines) >= 5
+        # The header records the scaler the CLI actually used.
+        assert any("Scaler: linear" in line for line in lines)
+        data_lines = [ln for ln in lines if not ln.startswith("#")]
+        assert len(data_lines) == 6  # nodata line + 5 colors
 
     def test_gdal_with_nodata(self, gdal_exporter, simple_colormap, linear_scaler):
         """Test GDAL exporter with nodata value."""
@@ -348,6 +355,20 @@ class TestGDALExporter:
             },
         )
         assert "nv 0 0 0 0" in output
+
+    def test_gdal_nodata_false_suppresses_an_explicit_value(
+        self, gdal_exporter, simple_colormap, linear_scaler
+    ):
+        """nodata=false wins over nodata_value; the line is omitted entirely."""
+        output = gdal_exporter.export(
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "nodata": False, "nodata_value": "-9999"},
+        )
+        assert "-9999" not in output
+        assert not output.startswith("nv ")
 
 
 class TestNewExporterRegistration:
@@ -382,8 +403,11 @@ class TestHexExporterFormats:
         """Test hex exporter with lines format (default)."""
         exporter = get_exporter("hex")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "lines"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "lines"},
         )
         lines = output.strip().split("\n")
         assert len(lines) == 3
@@ -393,8 +417,11 @@ class TestHexExporterFormats:
         """Test hex exporter with JSON format."""
         exporter = get_exporter("hex")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "json"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "json"},
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -405,8 +432,11 @@ class TestHexExporterFormats:
         """Test hex exporter with JSON no-hash format."""
         exporter = get_exporter("hex")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "json_nohash"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "json_nohash"},
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -417,8 +447,11 @@ class TestHexExporterFormats:
         """Test hex exporter with CSV format."""
         exporter = get_exporter("hex")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "csv"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "csv"},
         )
         colors = output.split(", ")
         assert len(colors) == 3
@@ -443,8 +476,11 @@ class TestRGBAExporterFormats:
         """Test rgba exporter with CSS format (default)."""
         exporter = get_exporter("rgba")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "css"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "css"},
         )
         lines = output.strip().split("\n")
         assert len(lines) == 3
@@ -454,8 +490,11 @@ class TestRGBAExporterFormats:
         """Test rgba exporter with tuple format."""
         exporter = get_exporter("rgba")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "tuple"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "tuple"},
         )
         lines = output.strip().split("\n")
         assert len(lines) == 3
@@ -465,8 +504,11 @@ class TestRGBAExporterFormats:
         """Test rgba exporter with JSON format."""
         exporter = get_exporter("rgba")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "json"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "json"},
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -477,8 +519,11 @@ class TestRGBAExporterFormats:
         """Test rgba exporter with float alpha."""
         exporter = get_exporter("rgba")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "json", "alpha_format": "float"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "json", "alpha_format": "float"},
         )
         data = json.loads(output)
         # Alpha should be 1.0 for fully opaque colors
@@ -503,8 +548,11 @@ class TestHSLExporter:
         """Test HSL exporter with CSS format."""
         exporter = get_exporter("hsl")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "css"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "css"},
         )
         lines = output.strip().split("\n")
         assert len(lines) == 3
@@ -514,8 +562,11 @@ class TestHSLExporter:
         """Test HSL exporter with JSON format."""
         exporter = get_exporter("hsl")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "output_format": "json"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "output_format": "json"},
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -541,8 +592,7 @@ class TestJSONExporter:
         """Test JSON exporter with array structure."""
         exporter = get_exporter("json")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "structure": "array"}
+            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3, "structure": "array"}
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -552,8 +602,11 @@ class TestJSONExporter:
         """Test JSON exporter with array_objects structure."""
         exporter = get_exporter("json")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "structure": "array_objects"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "structure": "array_objects"},
         )
         data = json.loads(output)
         assert isinstance(data, list)
@@ -564,8 +617,7 @@ class TestJSONExporter:
         """Test JSON exporter with object structure."""
         exporter = get_exporter("json")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "structure": "object"}
+            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3, "structure": "object"}
         )
         data = json.loads(output)
         assert isinstance(data, dict)
@@ -576,8 +628,7 @@ class TestJSONExporter:
         """Test JSON exporter with full structure."""
         exporter = get_exporter("json")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "structure": "full"}
+            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3, "structure": "full"}
         )
         data = json.loads(output)
         assert isinstance(data, dict)
@@ -590,8 +641,11 @@ class TestJSONExporter:
         """Test JSON exporter with RGB color format."""
         exporter = get_exporter("json")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "structure": "array", "color_format": "rgb"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "structure": "array", "color_format": "rgb"},
         )
         data = json.loads(output)
         assert all(isinstance(c, list) and len(c) == 3 for c in data)
@@ -614,10 +668,7 @@ class TestCSSExporter:
     def test_css_basic_output(self, simple_colormap, linear_scaler):
         """Test CSS exporter produces valid output."""
         exporter = get_exporter("css")
-        output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3}
-        )
+        output = exporter.export(simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3})
         assert ":root {" in output
         assert "--color-0:" in output
         assert "--color-1:" in output
@@ -627,8 +678,11 @@ class TestCSSExporter:
         """Test CSS exporter with custom prefix."""
         exporter = get_exporter("css")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "prefix": "my-palette"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "prefix": "my-palette"},
         )
         assert "--my-palette-0:" in output
 
@@ -636,8 +690,11 @@ class TestCSSExporter:
         """Test CSS exporter with custom selector."""
         exporter = get_exporter("css")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "selector": ".theme-dark"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "selector": ".theme-dark"},
         )
         assert ".theme-dark {" in output
 
@@ -645,10 +702,20 @@ class TestCSSExporter:
         """Test CSS exporter with HSL inclusion."""
         exporter = get_exporter("css")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "include_hsl": True}
+            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3, "include_hsl": True}
         )
         assert "--color-0-hsl:" in output
+
+    def test_css_rejects_selector_breakout(self, simple_colormap, linear_scaler):
+        exporter = get_exporter("css")
+        with pytest.raises(ExporterOptionError, match="selector"):
+            exporter.export(
+                simple_colormap,
+                linear_scaler,
+                0,
+                100,
+                options={"selector": "*} body{x:1} /*"},
+            )
 
 
 class TestGIMPExporter:
@@ -668,10 +735,7 @@ class TestGIMPExporter:
     def test_gimp_basic_output(self, simple_colormap, linear_scaler):
         """Test GIMP exporter produces valid output."""
         exporter = get_exporter("gimp")
-        output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3}
-        )
+        output = exporter.export(simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3})
         assert "GIMP Palette" in output
         assert "Name: TestMap" in output
         assert "Columns:" in output
@@ -680,18 +744,29 @@ class TestGIMPExporter:
         """Test GIMP exporter with custom palette name."""
         exporter = get_exporter("gimp")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "palette_name": "My Custom Palette"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "palette_name": "My Custom Palette"},
         )
         assert "Name: My Custom Palette" in output
+
+    def test_gimp_rejects_newlines_in_the_name(self, simple_colormap, linear_scaler):
+        exporter = get_exporter("gimp")
+        with pytest.raises(ExporterOptionError, match="palette_name"):
+            exporter.export(
+                simple_colormap,
+                linear_scaler,
+                0,
+                100,
+                options={"palette_name": "evil\nColumns: 99"},
+            )
 
     def test_gimp_color_format(self, simple_colormap, linear_scaler):
         """Test GIMP exporter color format."""
         exporter = get_exporter("gimp")
-        output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3}
-        )
+        output = exporter.export(simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3})
         lines = output.strip().split("\n")
         # Skip header lines, check color entries
         color_lines = [l for l in lines if not l.startswith(("GIMP", "Name:", "Columns:", "#"))]
@@ -716,8 +791,11 @@ class TestSVGExporter:
         """Test SVG exporter with linear gradient."""
         exporter = get_exporter("svg")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "gradient_type": "linear"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "gradient_type": "linear"},
         )
         assert "<defs>" in output
         assert "<linearGradient" in output
@@ -728,8 +806,11 @@ class TestSVGExporter:
         """Test SVG exporter with radial gradient."""
         exporter = get_exporter("svg")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "gradient_type": "radial"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "gradient_type": "radial"},
         )
         assert "<radialGradient" in output
 
@@ -737,8 +818,11 @@ class TestSVGExporter:
         """Test SVG exporter with custom gradient ID."""
         exporter = get_exporter("svg")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "gradient_id": "my-gradient"}
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "gradient_id": "my-gradient"},
         )
         assert 'id="my-gradient"' in output
 
@@ -746,9 +830,20 @@ class TestSVGExporter:
         """Test SVG exporter with full SVG output."""
         exporter = get_exporter("svg")
         output = exporter.export(
-            simple_colormap, linear_scaler, 0, 100,
-            options={"num_colors": 3, "full_svg": True}
+            simple_colormap, linear_scaler, 0, 100, options={"num_colors": 3, "full_svg": True}
         )
         assert '<?xml version="1.0"' in output
         assert "<svg" in output
         assert "<rect" in output or "<circle" in output
+
+    def test_svg_quotes_a_gradient_id_inside_the_fill_url(self, simple_colormap, linear_scaler):
+        exporter = get_exporter("svg")
+        output = exporter.export(
+            simple_colormap,
+            linear_scaler,
+            0,
+            100,
+            options={"num_colors": 3, "full_svg": True, "gradient_id": 'a"b'},
+        )
+        # quoteattr switches to single quotes so the embedded " stays inside the attribute.
+        assert "fill='url(#a\"b)'" in output

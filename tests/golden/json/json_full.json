@@ -1,0 +1,14 @@
+{
+  "name": "RefMap",
+  "num_colors": 3,
+  "domain": [
+    0,
+    100
+  ],
+  "interpolation_space": "oklch",
+  "colors": [
+    "#0000ff",
+    "#ffff00",
+    "#ff0000"
+  ]
+}

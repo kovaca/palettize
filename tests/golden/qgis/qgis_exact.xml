@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<colorramps>
+  <colorramp name="RefMap" type="exact">
+    <item value="0.0000" color="#0000ff" alpha="255" label="0.00" />
+    <item value="50.0000" color="#ffff00" alpha="255" label="50.00" />
+    <item value="100.0000" color="#ff0000" alpha="255" label="100.00" />
+  </colorramp>
+</colorramps>

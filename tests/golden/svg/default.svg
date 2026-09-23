@@ -1,0 +1,9 @@
+<defs>
+  <linearGradient id="palette" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0.00%" stop-color="#0000ff"/>
+    <stop offset="25.00%" stop-color="#00cfbd"/>
+    <stop offset="50.00%" stop-color="#ffff00"/>
+    <stop offset="75.00%" stop-color="#ff9800"/>
+    <stop offset="100.00%" stop-color="#ff0000"/>
+  </linearGradient>
+</defs>

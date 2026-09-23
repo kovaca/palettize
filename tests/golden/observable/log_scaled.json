@@ -1,0 +1,16 @@
+{
+  "type": "log",
+  "domain": [
+    1,
+    1000
+  ],
+  "interpolate": "d3.interpolateHcl",
+  "clamp": true,
+  "range": [
+    "#0000ff",
+    "#00cfbd",
+    "#ffff00",
+    "#ff9800",
+    "#ff0000"
+  ]
+}

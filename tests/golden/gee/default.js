@@ -1,0 +1,1 @@
+var palettize_viz = {min: 0, max: 100, palette: ['0000ff', '00cfbd', 'ffff00', 'ff9800', 'ff0000']};
